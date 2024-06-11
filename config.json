@@ -1,7 +1,45 @@
 {
-    "params" : {
-        "name" : "string",
-        "email" : "string",
-        "password" : "string"
+    "mz_list_path": "data/all_mz_values.csv",
+    "labels_path": "data/labels.csv",
+    "m_z_column_name": "M/Z",
+    "area_column_name": "Area",
+    "first_time_column_name": "1st Time (s)",
+    "second_time_column_name": "2nd Time (s)",
+    "csv_file_name_column": "csv_file_name",
+    "label_column_name": "label",
+
+    "extract_heatmaps": {
+        "raw_csv_path": "/usr/scratch/NASA/raw/",
+        "output_dir_heatmap": "/usr/scratch/chromalyzer/heatmaps/",
+        "m_z_threshold": 0.5,
+        "parallel_processing": true
+    },
+
+    "find_peaks": {
+
+    },
+
+    "retention_alignment":{
+
+    },
+    
+    "parameter_selection":{
+
+    },
+
+    "train_model":{
+
+    },
+
+    "evaluation": {
+
+    },
+
+    "predict" :{
+
+    },
+
+    "plot":{
+
     }
 }

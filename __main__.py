@@ -7,7 +7,7 @@ def main():
     import argparse
     import warnings
 
-    import ChromClassifier
+    import chromalyzer
 
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter,
@@ -15,7 +15,7 @@ def main():
     parser.add_argument(
         "--version",
         action="version",
-        version=f"ChromClassifier {ChromClassifier.__version__}",
+        version=f"ChromClassifier {chromalyzer.__version__}",
     )
 
     # Suppress some warnings
