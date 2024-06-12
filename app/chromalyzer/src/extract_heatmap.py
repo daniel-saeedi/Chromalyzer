@@ -69,7 +69,7 @@ def heatmap_extraction(args):
 
     raw_csv_path = args['extract_heatmaps']['raw_csv_path']
     threshold = args['extract_heatmaps']['m_z_threshold']
-    output_dir_heatmap = args['extract_heatmaps']['output_dir_heatmap']
+    output_dir_heatmap = args['output_dir_heatmap']
     parallel = args['extract_heatmaps']['parallel_processing']
 
     log_path = os.path.join(output_dir_heatmap, 'extract_heatmaps.log')
@@ -126,7 +126,7 @@ def add_args(parser):
         "--config_path",
         type=str,
         required=True,
-        help="Path to a csv file containing the m/z list to extract heatmaps for.",
+        help="Path to config file.",
     )
 
 def main(args):

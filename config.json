@@ -8,9 +8,9 @@
     "csv_file_name_column": "csv_file_name",
     "label_column_name": "label",
 
+    "output_dir_heatmap": "/usr/scratch/chromalyzer/heatmaps/",
     "extract_heatmaps": {
         "raw_csv_path": "/usr/scratch/NASA/raw/",
-        "output_dir_heatmap": "/usr/scratch/chromalyzer/heatmaps/",
         "m_z_threshold": 0.5,
         "parallel_processing": true
     },
@@ -40,6 +40,6 @@
     },
 
     "plot":{
-
+        "plot_dir" : "/usr/scratch/chromalyzer/plots/"
     }
 }

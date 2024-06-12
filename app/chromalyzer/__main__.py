@@ -1,7 +1,7 @@
 import argparse
 import warnings
 import chromalyzer
-
+ss
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter,
@@ -9,14 +9,15 @@ def main():
     parser.add_argument(
         "--version",
         action="version",
-        version=f"Chromalyzer {chromalyzer.__version__}",
+        version=f"chromalyzer {chromalyzer.__version__}",
     )
 
     # Suppress some warnings
     warnings.filterwarnings("ignore", message="^.* socket cannot be initialized.*$")
 
     modules = {
-        "extract_heatmap": chromalyzer.extract_heatmap,
+        "extract_heatmap": chromalyzer.extract_heatmap, # Module 1
+        "plot_heatmap": chromalyzer.plot_heatmap,
     }
 
     subparsers = parser.add_subparsers(title="Choose a module")
@@ -35,6 +36,9 @@ def main():
         args.func(args)
     except TypeError:
         parser.print_help()
+    
+    
+
 
 if __name__ == "__main__":
     main()

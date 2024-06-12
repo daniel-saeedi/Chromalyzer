@@ -10,4 +10,5 @@ app/chromalyzer.egg-info/requires.txt
 app/chromalyzer.egg-info/top_level.txt
 app/chromalyzer/src/__init__.py
 app/chromalyzer/src/extract_heatmap.py
+app/chromalyzer/src/plot_heatmap.py
 app/chromalyzer/src/utils.py

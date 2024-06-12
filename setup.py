@@ -1,13 +1,14 @@
-
 import os
 import shutil
 from setuptools import setup, find_packages, Command
+import fnmatch
+
 
 with open("app/README.md", "r") as f:
     long_description = f.read()
 
 class CleanCommand(Command):
-    """Custom clean command to tidy up the project root."""
+    """Custom clean command to tidy up the project root and remove build artifacts."""
     user_options = []
 
     def initialize_options(self):
@@ -17,20 +18,40 @@ class CleanCommand(Command):
         pass
 
     def run(self):
-        for dirpath in ('./build', './dist', './*.egg-info'):
-            if os.path.exists(dirpath):
-                shutil.rmtree(dirpath)
-        print("Cleaned up the project directories.")
+        # Directories and patterns to clean
+        directories = ['./build', './dist', './.eggs']
+        patterns = ['./*.egg-info', './*.pyc', './*.pyo', './__pycache__']
+
+        for directory in directories:
+            if os.path.exists(directory):
+                shutil.rmtree(directory)
+                print(f"Removed directory: {directory}")
+
+        for root, dirs, files in os.walk('.'):
+            for pattern in patterns:
+                for filename in fnmatch.filter(files, pattern):
+                    file_path = os.path.join(root, filename)
+                    os.remove(file_path)
+                    print(f"Removed file: {file_path}")
+
+            # Optionally, remove __pycache__ directories recursively
+            if '__pycache__' in dirs:
+                shutil.rmtree(os.path.join(root, '__pycache__'))
+                print(f"Removed __pycache__ in: {root}")
+
+        print("Cleaned up the project directories and files.")
 
 setup(
     name='chromalyzer',
-    version='0.1',
-    packages=find_packages(),
+    version='1.0.0.0',
+    package_dir={"": "app"},
+    packages=find_packages(where="app"),
     install_requires=[
         'pandas',
         'numpy',
         'loguru',
-        'tqdm'
+        'tqdm',
+        'seaborn'
     ],
     python_requires=">=3.10",
     long_description=long_description,
@@ -38,7 +59,6 @@ setup(
     cmdclass={
         'clean': CleanCommand,
     },
-
     entry_points={
         'console_scripts': [
             'chromalyzer=app.chromalyzer.__main__:main',
