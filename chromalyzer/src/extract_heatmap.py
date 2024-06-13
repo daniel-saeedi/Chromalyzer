@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import os
 from tqdm import tqdm
-from .utils import heatmap, filter_by_m_z
-from .utils import create_folder_if_not_exists
+from .utils.heatmap_utils import heatmap, filter_by_m_z
+from .utils.heatmap_utils import create_folder_if_not_exists
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def process_csv_file(csv_file_name, raw_csv_path, mz_list, threshold, m_z_column_name, first_time_column_name, second_time_column_name, area_column_name, output_dir_heatmap):
@@ -75,8 +75,6 @@ def heatmap_extraction(args):
     log_path = os.path.join(output_dir_heatmap, 'extract_heatmaps.log')
     logger.add(log_path, rotation="10 MB")
 
-    
-
     # Load the m/z list
     mz_list = pd.read_csv(mz_list_path)
 
@@ -121,27 +119,26 @@ def heatmap_extraction(args):
 
             logger.info(f"Finished processing file {csv_file_name}")
 
-def add_args(parser):
-    parser.add_argument(
-        "--config_path",
-        type=str,
-        required=True,
-        help="Path to config file.",
-    )
+# def add_args(parser):
+#     parser.add_argument(
+#         "--config_path",
+#         type=str,
+#         required=True,
+#         help="Path to the config file.",
+#     )
+#     return parser
 
-    return parser
 
+# def main(args):
+#     with open(args.config_path, "r") as f:
+#         config = json.load(f)
+    
+#     print('test')
+#     heatmap_extraction(config)
 
-def main(args):
-    with open(args.config_path, "r") as f:
-        config = json.load(f)
-
-    # print(config['extract_heatmaps']['raw_csv_path'])
-    heatmap_extraction(config)
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    add_args(parser)
-    args = parser.parse_args()
-    main(args)
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+#     add_args(parser)
+#     args = parser.parse_args()
+#     main(args)
 

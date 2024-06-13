@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import os
 
-from .utils import create_folder_if_not_exists, load_heatmap_data, plt_heatmap
+from .utils.heatmap_utils import create_folder_if_not_exists, load_heatmap_data, plt_heatmap
 import argparse
 
 def plot_heatmap(config, m_z, sample_name, all_samples):
@@ -36,28 +36,28 @@ def add_args(parser):
         help="Path to the config file.",
     )
 
-    parser.add_argument(
-        "--m_z",
-        type=float,
-        required=True,
-        help="Which m/z value to plot heatmap for.",
-    )
+    # parser.add_argument(
+    #     "--m_z",
+    #     type=float,
+    #     required=True,
+    #     help="Which m/z value to plot heatmap for.",
+    # )
 
-    parser.add_argument(
-        "--sample_name",
-        type=str,
-        required=False,
-        default='',
-        help="File Name of the sample to plot heatmap for. This name should be present in the labels.csv",
-    )
+    # parser.add_argument(
+    #     "--sample_name",
+    #     type=str,
+    #     required=False,
+    #     default='',
+    #     help="File Name of the sample to plot heatmap for. This name should be present in the labels.csv",
+    # )
 
-    parser.add_argument(
-        "--all",
-        type=bool,
-        default=False,
-        required=False,
-        help="If you want to plot heatmap for all the samples in the labels.csv file, set this flag to True.",
-    )
+    # parser.add_argument(
+    #     "--all",
+    #     type=bool,
+    #     default=False,
+    #     required=False,
+    #     help="If you want to plot heatmap for all the samples in the labels.csv file, set this flag to True.",
+    # )
 
     return parser
 
@@ -65,16 +65,14 @@ def add_args(parser):
 def main(args):
     with open(args.config_path, "r") as f:
         config = json.load(f)
-    
     m_z = args.m_z
     sample_name = args.sample_name
     all_samples = args.all
-
     plot_heatmap(config,m_z,sample_name,all_samples)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__,
-    )
-    parsed_args = add_args(parser).parse_args()
-    main(parsed_args)
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser(
+#         formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__,
+#     )
+#     parsed_args = add_args(parser).parse_args()
+#     main(parsed_args)

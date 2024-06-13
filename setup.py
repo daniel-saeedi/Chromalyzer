@@ -51,7 +51,8 @@ setup(
         'numpy',
         'loguru',
         'tqdm',
-        'seaborn'
+        'seaborn',
+        'scipy'
     ],
     python_requires=">=3.10.8",
     long_description=long_description,

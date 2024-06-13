@@ -4,8 +4,6 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.ticker import ScalarFormatter
-from matplotlib.ticker import FormatStrFormatter
 
 
 # Create a heatmap from a dataframe
@@ -37,6 +35,13 @@ def load_heatmap_data(heatmap_dir, m_z, sample):
     # Create DataFrame for heatmap
     ht_df = pd.DataFrame(heatmap_2d, index=second_time, columns=first_time)
     return ht_df
+
+def load_headmaps_list(path_to_heatmaps, samples, m_z):
+    heatmaps = []
+    for sample_name in samples:
+        ht_df = load_heatmap_data(path_to_heatmaps,m_z,sample_name)
+        heatmaps.append(ht_df)
+    return heatmaps
 
 # Plot the heatmap
 def plt_heatmap(path, ht_df, t1_start=0, t1_end=0, t2_start=0, t2_end=0, full_spectrum=False, cluster_rectangles=None, title='', save=False):
