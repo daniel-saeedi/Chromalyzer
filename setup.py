@@ -2,9 +2,10 @@ import os
 import shutil
 from setuptools import setup, find_packages, Command
 import fnmatch
+import sys
 
 
-with open("app/README.md", "r") as f:
+with open("README.md", "r") as f:
     long_description = f.read()
 
 class CleanCommand(Command):
@@ -43,9 +44,8 @@ class CleanCommand(Command):
 
 setup(
     name='chromalyzer',
-    version='1.0.0.0',
-    package_dir={"": "app"},
-    packages=find_packages(where="app"),
+    version='1.0.0',
+    packages=find_packages(),
     install_requires=[
         'pandas',
         'numpy',
@@ -53,7 +53,7 @@ setup(
         'tqdm',
         'seaborn'
     ],
-    python_requires=">=3.10",
+    python_requires=">=3.10.8",
     long_description=long_description,
     long_description_content_type="text/markdown",
     cmdclass={
@@ -61,7 +61,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'chromalyzer=app.chromalyzer.__main__:main',
+            'chromalyzer=chromalyzer.__main__:main',
         ],
     },
+    author="Your Name",
+    author_email=""
 )

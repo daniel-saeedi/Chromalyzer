@@ -1,7 +1,9 @@
 Metadata-Version: 2.1
 Name: chromalyzer
-Version: 1.0.0.0
-Requires-Python: >=3.10
+Version: 1.0.0
+Author: Your Name
+Author-email: 
+Requires-Python: >=3.10.8
 Description-Content-Type: text/markdown
 Requires-Dist: pandas
 Requires-Dist: numpy
@@ -9,4 +11,5 @@ Requires-Dist: loguru
 Requires-Dist: tqdm
 Requires-Dist: seaborn
 
-#TODO
+# 2D_Chrom_Classifier
+2D Gas chromotography Python Package

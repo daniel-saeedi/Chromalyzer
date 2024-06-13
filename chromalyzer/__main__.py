@@ -1,7 +1,7 @@
 import argparse
 import warnings
 import chromalyzer
-ss
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter,
@@ -20,8 +20,8 @@ def main():
         "plot_heatmap": chromalyzer.plot_heatmap,
     }
 
-    subparsers = parser.add_subparsers(title="Choose a module")
-    subparsers.required = True
+    subparsers = parser.add_subparsers(title="Choose a module",)
+    subparsers.required = "True"
 
     for key in modules:
         module_parser = subparsers.add_parser(
@@ -31,6 +31,7 @@ def main():
         )
         modules[key].add_args(module_parser)
         module_parser.set_defaults(func=modules[key].main)
+
     try:
         args = parser.parse_args()
         args.func(args)

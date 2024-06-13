@@ -40,6 +40,6 @@
     },
 
     "plot":{
-        "plot_dir" : "/usr/scratch/chromalyzer/plots/"
+        "plot_dir" : "/usr/scratch/danial_stuff/Chromalyzer/plots/"
     }
 }

@@ -13,14 +13,12 @@ def plot_heatmap(config, m_z, sample_name, all_samples):
     if all_samples:
         labels = pd.read_csv(labels_path)
         for sample in labels[csv_file_name_column].tolist():
-            heatmap_path = os.path.join(output_dir_heatmap, sample)
-            ht_df = load_heatmap_data(heatmap_path, m_z, sample)
+            ht_df = load_heatmap_data(output_dir_heatmap, int(m_z), sample)
             plt_heatmap(output_dir_heatmap, ht_df, full_spectrum=True, title=f'Heatmap for {sample} with m/z {m_z}', save=True)
             logger.info(f'Heatmap for {sample} with m/z {m_z} plotted successfully!')
 
     else:
-        heatmap_path = os.path.join(output_dir_heatmap, sample_name)
-        ht_df = load_heatmap_data(heatmap_path, m_z, sample_name)
+        ht_df = load_heatmap_data(output_dir_heatmap, int(m_z), sample_name)
         plt_heatmap(output_dir_heatmap, ht_df, full_spectrum=True, title=f'Heatmap for {sample_name} with m/z {m_z}', save=True)
         logger.info(f'Heatmap for {sample_name} with m/z {m_z} plotted successfully!')
 
@@ -54,6 +52,10 @@ def add_args(parser):
         required=False,
         help="If you want to plot heatmap for all the samples in the labels.csv file, set this flag to True.",
     )
+
+    # The user has to specify either 'all' flag or 'sample_name' flag. If both are specified, the program will throw an error.
+    if parser.parse_args().all and parser.parse_args().sample_name:
+        parser.error("You can't specify both 'all' and 'sample_name' flags. Please specify only one of them.")
 
 def main(args):
     with open(args.config_path, "r") as f:
