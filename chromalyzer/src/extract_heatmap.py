@@ -41,7 +41,6 @@ def process_csv_file(csv_file_name, raw_csv_path, mz_list, threshold, m_z_column
             file_path = os.path.join(output_dir_heatmap, f'{csv_file_name}/', str(int(m_z)) + '_second_time.npy')
             np.save(file_path, second_time)
 
-            # logger.info(f"Saved heatmap for m/z: {m_z} to {file_path}")
         logger.info(f"Finished processing file {csv_file_name}")
     except Exception as e:
         logger.error(f"Error processing file {csv_file_name}: {e}")
@@ -118,27 +117,4 @@ def heatmap_extraction(args):
                 np.save(file_path, second_time)
 
             logger.info(f"Finished processing file {csv_file_name}")
-
-# def add_args(parser):
-#     parser.add_argument(
-#         "--config_path",
-#         type=str,
-#         required=True,
-#         help="Path to the config file.",
-#     )
-#     return parser
-
-
-# def main(args):
-#     with open(args.config_path, "r") as f:
-#         config = json.load(f)
-    
-#     print('test')
-#     heatmap_extraction(config)
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-#     add_args(parser)
-#     args = parser.parse_args()
-#     main(args)
 

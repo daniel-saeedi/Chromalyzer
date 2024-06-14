@@ -180,79 +180,89 @@ def extract_peaks_process(save_peaks_path, config,params):
         heatmaps = load_headmaps_list(config['output_dir_heatmap'],samples_name,m_z)
 
         df_peaks_list = []
-        for idx, sample in enumerate(samples_name):
-            # Skip the sample if it has no heatmap
-            ht_df = heatmaps[idx]
-            if len(ht_df) == 0: continue
+        try:
+            for idx, sample in enumerate(samples_name):
+                # Skip the sample if it has no heatmap
+                ht_df = heatmaps[idx]
+                if len(ht_df) == 0: continue
 
-            heatmap_numpy = ht_df.to_numpy()
-            max = np.max(heatmap_numpy.reshape(-1))
-            filtered = (heatmap_numpy >= max*lam1)
-            cluster_centers,cluster_rectangles = find_peaks(filtered, threshold=config['peak_max_neighbor_distance'])
+                heatmap_numpy = ht_df.to_numpy()
+                max = np.max(heatmap_numpy.reshape(-1))
+                filtered = (heatmap_numpy >= max*lam1)
+                cluster_centers,cluster_rectangles = find_peaks(filtered, threshold=config['peak_max_neighbor_distance'])
 
-            # Adding actual time values to the peaks instead of indices
-            peaks_pairs = []
-            first_time_axis = np.load(os.path.join(config['output_dir_heatmap'], sample, f'{m_z}_first_time.npy'))
-            second_time_axis = np.load(os.path.join(config['output_dir_heatmap'], sample, f'{m_z}_second_time.npy'))
-            # Filter the peaks based on the area
-            for id, point in enumerate(cluster_centers):
-                intensity = rectanle_sum_area(heatmap_numpy,cluster_rectangles[id])
-                if intensity >= lam2*max:
-                    peaks_pairs.append((sample,intensity, first_time_axis[point[1]],second_time_axis[point[0]],
-                                            first_time_axis[cluster_rectangles[id][1]],second_time_axis[cluster_rectangles[id][0]],
-                                            first_time_axis[cluster_rectangles[id][3]],second_time_axis[cluster_rectangles[id][2]]))
+                # Adding actual time values to the peaks instead of indices
+                peaks_pairs = []
+                first_time_axis = np.load(os.path.join(config['output_dir_heatmap'], sample, f'{m_z}_first_time.npy'))
+                second_time_axis = np.load(os.path.join(config['output_dir_heatmap'], sample, f'{m_z}_second_time.npy'))
+                # Filter the peaks based on the area
+                for id, point in enumerate(cluster_centers):
+                    intensity = rectanle_sum_area(heatmap_numpy,cluster_rectangles[id])
+                    if intensity >= lam2*max:
+                        peaks_pairs.append((sample,intensity, first_time_axis[point[1]],second_time_axis[point[0]],
+                                                first_time_axis[cluster_rectangles[id][1]],second_time_axis[cluster_rectangles[id][0]],
+                                                first_time_axis[cluster_rectangles[id][3]],second_time_axis[cluster_rectangles[id][2]]))
 
-            if len(peaks_pairs) == 0: continue
+                if len(peaks_pairs) == 0: continue
 
-            df_peaks = pd.DataFrame(peaks_pairs, columns=['csv_file_name', 'peak_area','RT1_center', 'RT2_center', 'RT1_start', 'RT2_start', 'RT1_end', 'RT2_end'])
+                df_peaks = pd.DataFrame(peaks_pairs, columns=['csv_file_name', 'peak_area','RT1_center', 'RT2_center', 'RT1_start', 'RT2_start', 'RT1_end', 'RT2_end'])
 
-            if config['strict_noise_filtering']:
-                ht_df_mean_subtracted = ht_df - ht_df.values.reshape(-1).mean()
-                ht_df_mean_subtracted = ht_df_mean_subtracted.map(relu)
-                # Remove peaks that occur near noisy column
-                df_peaks = remove_noisy_columns_peaks(df_peaks, ht_df_mean_subtracted, sample)
+                if config['strict_noise_filtering']:
+                    ht_df_mean_subtracted = ht_df - ht_df.values.reshape(-1).mean()
+                    ht_df_mean_subtracted = ht_df_mean_subtracted.map(relu)
+                    # Remove peaks that occur near noisy column
+                    df_peaks = remove_noisy_columns_peaks(df_peaks, ht_df_mean_subtracted, sample)
 
-                # Remove noisy columns
-                if config['column_noise_removal']['enable']:
-                    df_peaks = remove_specified_columns_peaks(df_peaks, ht_df_mean_subtracted, sample, 
-                                                                config['column_noise_removal']['noisy_columns'],
-                                                                config['column_noise_removal']['max_distance_removal_noisy_columns'],
-                                                                config['column_noise_removal']['non_zero_ratio_column_threshold'])
+                    # Remove noisy columns
+                    if config['column_noise_removal']['enable']:
+                        df_peaks = remove_specified_columns_peaks(df_peaks, ht_df_mean_subtracted, sample, 
+                                                                    config['column_noise_removal']['noisy_columns'],
+                                                                    config['column_noise_removal']['max_distance_removal_noisy_columns'],
+                                                                    config['column_noise_removal']['non_zero_ratio_column_threshold'])
+                        
                     
+                    if config['enable_noisy_regions']:
+                        # Removing peaks that occur in noisy regions
+                        for noisy_region in config['noisy_regions']:
+                            df_peaks = remove_noisy_regions_peaks(df_peaks, ht_df, sample, noisy_region)
+                    
+                    # If first_time is greater than 11400, then that's noise (Visual inspection)
+                    df_peaks.drop(df_peaks[df_peaks['RT1_center'] > config['max_retention_time1_allowed']].index, inplace=True)
+
+                    # Convolution filtering
+                    windows = generate_windows(ht_df.index.min(), ht_df.index.max(), config['convolution_filter']['rt2_window_size'], 
+                                                config['convolution_filter']['rt2_stride'], ht_df.columns.min(), ht_df.columns.max(), 
+                                                config['convolution_filter']['rt1_window_size'], 
+                                                config['convolution_filter']['rt1_stride'])
+                    ht_df_filtered = ht_df.where(ht_df >= max/config['convolution_filter']['lambda3'], 0)
+
+                    df_peaks = convolution_filter(df_peaks, sample, windows, ht_df_mean_subtracted, ht_df_filtered, config['convolution_filter']['non_zero_ratio_mean_subtracted'], config['convolution_filter']['non_zero_ratio_lambda3_filter'])
+
+                    # If RT1_end - RT1_start is greater than delta_rt1, then that's noise
+                    df_peaks.drop(df_peaks[abs(df_peaks['RT1_end'] - df_peaks['RT1_start']) > config['delta_rt1']].index, inplace=True)
+
+                    # If RT2_start - RT2_end is greater than delta_rt2, then that's noise
+                    df_peaks.drop(df_peaks[abs(df_peaks['RT2_start'] - df_peaks['RT2_end']) > config['delta_rt2']].index, inplace=True)
+
+                df_peaks_list.append(df_peaks)
+
+            logger.info(f'Saving peaks for m/z value: {m_z}')
+            if len(df_peaks_list) == 0:
+                df_all_peaks = pd.DataFrame([], columns=['csv_file_name', 'peak_area','RT1_center', 'RT2_center', 'RT1_start', 'RT2_start', 'RT1_end', 'RT2_end'])
+
+                df_all_peaks.to_csv(os.path.join(save_peaks_path, f'{m_z}.csv'), index=False)
+            else:
+                # Concatenate the peaks from all samples
+                df_all_peaks = pd.concat(df_peaks_list)
+                # Dropping peaks with area less than the threshold
+                df_all_peaks.drop(df_all_peaks[(df_all_peaks['peak_area'] < config['area_min_threshold'])].index, inplace=True)
                 
-                if config['enable_noisy_regions']:
-                    # Removing peaks that occur in noisy regions
-                    for noisy_region in config['noisy_regions']:
-                        df_peaks = remove_noisy_regions_peaks(df_peaks, ht_df, sample, noisy_region)
-                
-                # If first_time is greater than 11400, then that's noise (Visual inspection)
-                df_peaks.drop(df_peaks[df_peaks['RT1_center'] > config['max_retention_time1_allowed']].index, inplace=True)
-
-                # Convolution filtering
-                windows = generate_windows(ht_df.index.min(), ht_df.index.max(), config['convolution_filter']['rt2_window_size'], 
-                                            config['convolution_filter']['rt2_stride'], ht_df.columns.min(), ht_df.columns.max(), 
-                                            config['convolution_filter']['rt1_window_size'], 
-                                            config['convolution_filter']['rt1_stride'])
-                ht_df_filtered = ht_df.where(ht_df >= max/config['convolution_filter']['lambda3'], 0)
-
-                df_peaks = convolution_filter(df_peaks, sample, windows, ht_df_mean_subtracted, ht_df_filtered, config['convolution_filter']['non_zero_ratio_mean_subtracted'], config['convolution_filter']['non_zero_ratio_lambda3_filter'])
-
-                # If RT1_end - RT1_start is greater than delta_rt1, then that's noise
-                df_peaks.drop(df_peaks[abs(df_peaks['RT1_end'] - df_peaks['RT1_start']) > config['delta_rt1']].index, inplace=True)
-
-                # If RT2_start - RT2_end is greater than delta_rt2, then that's noise
-                df_peaks.drop(df_peaks[abs(df_peaks['RT2_start'] - df_peaks['RT2_end']) > config['delta_rt2']].index, inplace=True)
-
-            df_peaks_list.append(df_peaks)
-
-        # Concatenate the peaks from all samples
-        df_all_peaks = pd.concat(df_peaks_list)
-        # Dropping peaks with area less than the threshold
-        df_all_peaks.drop(df_all_peaks[(df_all_peaks['peak_area'] < config['area_min_threshold'])].index, inplace=True)
-
-        logger.info(f'Saving peaks for m/z value: {m_z}')
-        df_all_peaks.to_csv(os.path.join(save_peaks_path, f'{m_z}.csv'), index=False)
-    
+                df_all_peaks.to_csv(os.path.join(save_peaks_path, f'{m_z}.csv'), index=False)
+        except Exception as e:
+            logger.error(f'Error in extracting peaks for m/z value: {m_z}')
+            logger.error(e)
+            # line of error
+        
 def extract_peaks(config):
     log_path = os.path.join(config['peaks_dir_path'], 'find_peaks.log')
     logger.add(log_path, rotation="10 MB")
@@ -275,7 +285,9 @@ def extract_peaks(config):
     params_splits = np.array_split(params_combination, num_splits)
 
     if parallel_processing:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=num_splits) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=config['number_of_splits']) as executor:
             executor.map(extract_peaks_process, itertools.repeat(save_peaks_path), itertools.repeat(config), params_splits)
     else:
         extract_peaks_process(save_peaks_path, config, params_combination)
+    
+    logger.info('Peaks extraction is done.')
