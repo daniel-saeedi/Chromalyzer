@@ -206,41 +206,42 @@ def extract_peaks_process(save_peaks_path, config,params):
 
             df_peaks = pd.DataFrame(peaks_pairs, columns=['csv_file_name', 'peak_area','RT1_center', 'RT2_center', 'RT1_start', 'RT2_start', 'RT1_end', 'RT2_end'])
 
-            ht_df_mean_subtracted = ht_df - ht_df.values.reshape(-1).mean()
-            ht_df_mean_subtracted = ht_df_mean_subtracted.map(relu)
-            # Remove peaks that occur near noisy column
-            df_peaks = remove_noisy_columns_peaks(df_peaks, ht_df_mean_subtracted, sample)
+            if config['strict_noise_filtering']:
+                ht_df_mean_subtracted = ht_df - ht_df.values.reshape(-1).mean()
+                ht_df_mean_subtracted = ht_df_mean_subtracted.map(relu)
+                # Remove peaks that occur near noisy column
+                df_peaks = remove_noisy_columns_peaks(df_peaks, ht_df_mean_subtracted, sample)
 
-            # Remove noisy columns
-            if config['column_noise_removal']['enable']:
-                df_peaks = remove_specified_columns_peaks(df_peaks, ht_df_mean_subtracted, sample, 
-                                                            config['column_noise_removal']['noisy_columns'],
-                                                            config['column_noise_removal']['max_distance_removal_noisy_columns'],
-                                                            config['column_noise_removal']['non_zero_ratio_column_threshold'])
+                # Remove noisy columns
+                if config['column_noise_removal']['enable']:
+                    df_peaks = remove_specified_columns_peaks(df_peaks, ht_df_mean_subtracted, sample, 
+                                                                config['column_noise_removal']['noisy_columns'],
+                                                                config['column_noise_removal']['max_distance_removal_noisy_columns'],
+                                                                config['column_noise_removal']['non_zero_ratio_column_threshold'])
+                    
                 
-            
-            if config['enable_noisy_regions']:
-                # Removing peaks that occur in noisy regions
-                for noisy_region in config['noisy_regions']:
-                    df_peaks = remove_noisy_regions_peaks(df_peaks, ht_df, sample, noisy_region)
-            
-            # If first_time is greater than 11400, then that's noise (Visual inspection)
-            df_peaks.drop(df_peaks[df_peaks['RT1_center'] > config['max_retention_time1_allowed']].index, inplace=True)
+                if config['enable_noisy_regions']:
+                    # Removing peaks that occur in noisy regions
+                    for noisy_region in config['noisy_regions']:
+                        df_peaks = remove_noisy_regions_peaks(df_peaks, ht_df, sample, noisy_region)
+                
+                # If first_time is greater than 11400, then that's noise (Visual inspection)
+                df_peaks.drop(df_peaks[df_peaks['RT1_center'] > config['max_retention_time1_allowed']].index, inplace=True)
 
-            # Convolution filtering
-            windows = generate_windows(ht_df.index.min(), ht_df.index.max(), config['convolution_filter']['rt2_window_size'], 
-                                        config['convolution_filter']['rt2_stride'], ht_df.columns.min(), ht_df.columns.max(), 
-                                        config['convolution_filter']['rt1_window_size'], 
-                                        config['convolution_filter']['rt1_stride'])
-            ht_df_filtered = ht_df.where(ht_df >= max/config['convolution_filter']['lambda3'], 0)
+                # Convolution filtering
+                windows = generate_windows(ht_df.index.min(), ht_df.index.max(), config['convolution_filter']['rt2_window_size'], 
+                                            config['convolution_filter']['rt2_stride'], ht_df.columns.min(), ht_df.columns.max(), 
+                                            config['convolution_filter']['rt1_window_size'], 
+                                            config['convolution_filter']['rt1_stride'])
+                ht_df_filtered = ht_df.where(ht_df >= max/config['convolution_filter']['lambda3'], 0)
 
-            df_peaks = convolution_filter(df_peaks, sample, windows, ht_df_mean_subtracted, ht_df_filtered, config['convolution_filter']['non_zero_ratio_mean_subtracted'], config['convolution_filter']['non_zero_ratio_lambda3_filter'])
+                df_peaks = convolution_filter(df_peaks, sample, windows, ht_df_mean_subtracted, ht_df_filtered, config['convolution_filter']['non_zero_ratio_mean_subtracted'], config['convolution_filter']['non_zero_ratio_lambda3_filter'])
 
-            # If RT1_end - RT1_start is greater than delta_rt1, then that's noise
-            df_peaks.drop(df_peaks[abs(df_peaks['RT1_end'] - df_peaks['RT1_start']) > config['delta_rt1']].index, inplace=True)
+                # If RT1_end - RT1_start is greater than delta_rt1, then that's noise
+                df_peaks.drop(df_peaks[abs(df_peaks['RT1_end'] - df_peaks['RT1_start']) > config['delta_rt1']].index, inplace=True)
 
-            # If RT2_start - RT2_end is greater than delta_rt2, then that's noise
-            df_peaks.drop(df_peaks[abs(df_peaks['RT2_start'] - df_peaks['RT2_end']) > config['delta_rt2']].index, inplace=True)
+                # If RT2_start - RT2_end is greater than delta_rt2, then that's noise
+                df_peaks.drop(df_peaks[abs(df_peaks['RT2_start'] - df_peaks['RT2_end']) > config['delta_rt2']].index, inplace=True)
 
             df_peaks_list.append(df_peaks)
 
