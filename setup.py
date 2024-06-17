@@ -52,7 +52,9 @@ setup(
         'loguru',
         'tqdm',
         'seaborn',
-        'scipy'
+        'scipy',
+        'scikit-learn',
+        'plotly'
     ],
     python_requires=">=3.10.8",
     long_description=long_description,

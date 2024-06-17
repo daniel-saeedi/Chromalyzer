@@ -101,7 +101,6 @@ class RetentionTimesAlignment:
         else:
             return [], []
 
-
 def retention_times_alignment_process(params,peaks_dir_path,samples_name_list,mz_list,features_out_path):
     for param in params:
         lam1 = param[0]

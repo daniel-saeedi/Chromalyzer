@@ -11,6 +11,8 @@ Requires-Dist: loguru
 Requires-Dist: tqdm
 Requires-Dist: seaborn
 Requires-Dist: scipy
+Requires-Dist: scikit-learn
+Requires-Dist: plotly
 
 # 2D_Chrom_Classifier
 2D Gas chromotography Python Package
