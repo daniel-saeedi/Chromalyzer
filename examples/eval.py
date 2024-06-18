@@ -13,7 +13,7 @@ config = {
 
     "features_path": "/usr/scratch/chromalyzer/features/",
     "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
-    "eval_path":"/usr/scratch/chromalyzer/eval_path/rf/",
+    "eval_path":"/usr/scratch/chromalyzer/eval_path/NaiveBayes/",
 
 
     # "model": "svm",
@@ -27,15 +27,15 @@ config = {
     #     "rt2_threshold": range(5,300,5)
     # },
 
-    "model": "rf",
-    "rf": {
-        "n_estimators": [10,20,50,100,200],
-        "seed": 42,
-        "lambda1": [0.75],
-        "lambda2": [5.0],
-        "rt1_threshold": [10],
-        "rt2_threshold": range(5,300,5)
-    }
+    # "model": "knn",
+    # "knn": {
+    #     "n_neighbors": [1,2,3,4,5,6,7,8,9,10],
+    #     "seed": 42,
+    #     "lambda1": [0.75],
+    #     "lambda2": [5.0],
+    #     "rt1_threshold": [10],
+    #     "rt2_threshold": range(5,300,5)
+    # }
 
 
     # "model": "lr_l1",
@@ -47,6 +47,16 @@ config = {
     #     "rt1_threshold": [10],
     #     "rt2_threshold": range(5,300,5)
     # }
+
+    "model": 'NaiveBayes',
+    "NaiveBayes": {
+        "alpha": [0.01, 0.1, 0.5, 1, 5, 10],
+        "seed": 42,
+        "lambda1": [0.75],
+        "lambda2": [5.0],
+        "rt1_threshold": [10],
+        "rt2_threshold": range(5,300,5)
+    }
     
 }
 
