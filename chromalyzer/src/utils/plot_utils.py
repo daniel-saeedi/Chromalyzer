@@ -331,9 +331,9 @@ def plot_3d_signatures(all_signatures, result_dir):
     plt.gca().set_facecolor('white')
 
     # Change the color of the gridlines
-    ax.xaxis._axinfo['grid'].update(color = 'black', linestyle = '-')
-    ax.yaxis._axinfo['grid'].update(color = 'black', linestyle = '-')
-    ax.zaxis._axinfo['grid'].update(color = 'black', linestyle = '-')
+    ax.xaxis._axinfo['grid'].update(color = 'gray', linestyle = '-')
+    ax.yaxis._axinfo['grid'].update(color = 'gray', linestyle = '-')
+    ax.zaxis._axinfo['grid'].update(color = 'gray', linestyle = '-')
 
     plt.savefig(os.path.join(result_dir, 'Signatures_3d.pdf'), format='pdf')
     plt.close()
@@ -341,18 +341,16 @@ def plot_3d_signatures(all_signatures, result_dir):
 def plot_3d_peaks(peaks_features_df, samples,result_dir):
     peaks_features_df = peaks_features_df.copy()
     # Drop class 0
+    # selected_samples = samples[samples['label']==1]['csv_file_name'].unique()
     selected_samples = samples['csv_file_name'].unique()
     peaks_features_df = peaks_features_df[peaks_features_df['sample'].isin(selected_samples)]
 
     peaks_features_df['point_size'] = 200
     
-    markers = ['.','v','^','<','>','1','s','p','D','P']
-    colors = ['#e64b35', '#3c5488', '#f8951e', '#35b549', '#ff3333', '#a1caf7', '#f4c430', '#f4a460', '#ff4500', '#ff6347', '#ff69b4', '#ff7f50', '#ff8c00', '#ffa07a', '#ffa500', '#ff4500', '#ff6347', '#ff69b4', '#ff7f50', '#ff8c00', '#ffa07a', '#ffa500']
+    markers = ['.','v','^','<','>','1','s','p','D','P','X','*','H','h','+','x','d','|']
+    # colors = ['#e64b35', '#3c5488', '#f8951e', '#35b549', '#ff3333', '#a1caf7', '#f4c430', '#f4a460', '#ff4500', '#ff6347', '#ff69b4', '#ff7f50', '#ff8c00', '#ffa07a', '#ffa500', '#ff4500', '#ff6347', '#ff69b4', '#ff7f50', '#ff8c00', '#ffa07a', '#ffa500']
 
-    # randomly shuffle the markers
-    random.shuffle(markers)
-
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(12, 14))
     ax = fig.add_subplot(111, projection='3d')
 
     # Convert class to string if not already and adjust RT1_center for minutes and rounding
@@ -362,12 +360,14 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir):
     # Scatter plot for each sample with unique marker
     for i, sample in enumerate(selected_samples):
         sample_df = peaks_features_df[(peaks_features_df['sample'] == sample)]
-
+        label = samples[samples['csv_file_name'] == sample]['label'].values[0]
+        color = '#e64b35' if label == 0 else '#3c5488'
+        
         ax.scatter(
             sample_df['RT2'],
             sample_df['RT1'],
             sample_df['m/z'],
-            c=colors[i % len(colors)],
+            c=color,
             marker=markers[i % len(markers)],
             s=sample_df['point_size'],
             alpha=1,
@@ -376,19 +376,14 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir):
         )
 
     # Adding labels and title
-    ax.set_xlabel('2nd Time (s)')
-    ax.set_ylabel('1st Time (min)')
-    ax.set_zlabel('m/z')
+    ax.set_xlabel('2nd Time (s)', labelpad=20)
+    ax.set_ylabel('1st Time (min)', labelpad=20)
+    ax.set_zlabel('m/z', labelpad=20)
 
     # Set tick font size
     ax.tick_params(axis='both', which='major', labelsize=20)
 
-    # Set background color to white and edge color to black
-    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-
-    ax.set_box_aspect([2, 3, 1.5])  # Set aspect ratio to be equal
+    ax.set_box_aspect([2.5, 4, 2])  # Set aspect ratio to be equal
 
     # Adjusting the view and plot appearance
     ax.view_init(elev=20, azim=-150)
@@ -403,18 +398,23 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir):
     plt.gca().set_facecolor('white')
 
     # Change the color of the gridlines
-    ax.xaxis._axinfo['grid'].update(color='black', linestyle='-')
-    ax.yaxis._axinfo['grid'].update(color='black', linestyle='-')
-    ax.zaxis._axinfo['grid'].update(color='black', linestyle='-')
+    ax.xaxis._axinfo['grid'].update(color = 'gray', linestyle = '-' , linewidth=0.5)
+    ax.yaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
+    ax.zaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
+
+    # Make the edges of the plot black
+    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
     # Add legend at the bottom of the plot
-    ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.1), ncol=2)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=1)
 
     # Adjust layout to make room for the legend
     # Adjust layout to make room for the legend
     plt.subplots_adjust(bottom=0.25,left=0.25,right=0.75,top=0.75)
 
-    plt.savefig(os.path.join(result_dir, 'Peaks_3d.pdf'), format='pdf')
+    plt.savefig(os.path.join(result_dir, 'Peaks_3d_Biotic.pdf'), format='pdf')
     plt.close()
 
 
