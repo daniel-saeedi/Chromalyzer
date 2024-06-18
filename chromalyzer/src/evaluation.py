@@ -5,6 +5,8 @@ import numpy as np
 import concurrent.futures
 import random as python_random
 import pandas as pd
+from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
@@ -64,6 +66,111 @@ def process_seed_lr(seed, params_combination, config):
 
     pd.DataFrame(log,columns=['lam1','lam2','rt1_threshold','rt2_threshold','val_acc','test_acc','test_id','C']).to_csv(os.path.join(config['eval_path'],f'eval_seed_{seed}.csv'),index=False)
 
+def process_seed_svm(seed, params_combination, config):
+    np.random.seed(seed)
+    python_random.seed(seed)
+    kf = KFold(n_splits=9,shuffle=True, random_state=seed)
+
+    samples = pd.read_csv(config['labels_path'])
+    features_combined = np.zeros((len(samples),2))
+
+    log = []
+    for rest_index, test_index in kf.split(features_combined):
+       
+        for param in params_combination:
+            lam1 = param[0]
+            lam2 = param[1]
+            rt1_th = param[2]
+            rt2_th = param[3]
+            C = param[4]
+            kernel = param[5]
+
+            features = np.load(os.path.join(config['features_path'], f'features_lam1_{lam1}_lam2_{lam2}_rt1th_{rt1_th}_rt2th_{rt2_th}.npy'))
+
+            correct_val = 0
+            for val_id in rest_index:
+                train_index = np.delete(rest_index,np.where(rest_index == val_id))
+
+                X_val = features[val_id].reshape(1,-1)
+                y_val = samples[config['label_column_name']].to_numpy()[val_id].reshape(1,-1)
+                X_train = features[train_index]
+                y_train = samples[config['label_column_name']].to_numpy()[train_index]
+                
+                svc = svm.SVC(kernel=kernel,C = C)
+
+                # Fit the classifier to the data
+                svc.fit(X_train, y_train)
+
+                # Make predictions on the test set and apply threshold
+                prediction = svc.predict(X_val)
+
+                if prediction == y_val:
+                    correct_val += 1
+            
+            # Train on all training set
+            svc = svm.SVC(kernel=kernel,C = C)
+            svc.fit(features[rest_index], samples[config['label_column_name']].to_numpy()[rest_index])
+
+            X_test = features[test_index]
+            y_test = samples[config['label_column_name']].to_numpy()[test_index]
+            predictions_test = svc.predict(X_test)
+            test_acc = accuracy_score(y_test, predictions_test)
+            log.append((lam1,lam2,rt1_th,rt2_th,correct_val/(rest_index.shape[0]),test_acc,test_index,C))
+
+    pd.DataFrame(log,columns=['lam1','lam2','rt1_threshold','rt2_threshold','val_acc','test_acc','test_id','C']).to_csv(os.path.join(config['eval_path'],f'eval_seed_{seed}.csv'),index=False)
+
+def process_seed_rf(seed, params_combination, config):
+    np.random.seed(seed)
+    python_random.seed(seed)
+    kf = KFold(n_splits=9,shuffle=True, random_state=seed)
+
+    samples = pd.read_csv(config['labels_path'])
+    features_combined = np.zeros((len(samples),2))
+
+    log = []
+    for rest_index, test_index in kf.split(features_combined):
+        for param in params_combination:
+            lam1 = param[0]
+            lam2 = param[1]
+            rt1_th = param[2]
+            rt2_th = param[3]
+            n_estimators = param[4]
+
+            features = np.load(os.path.join(config['features_path'], f'features_lam1_{lam1}_lam2_{lam2}_rt1th_{rt1_th}_rt2th_{rt2_th}.npy'))
+
+            correct_val = 0
+            for val_id in rest_index:
+                train_index = np.delete(rest_index,np.where(rest_index == val_id))
+
+                X_val = features[val_id].reshape(1,-1)
+                y_val = samples[config['label_column_name']].to_numpy()[val_id].reshape(1,-1)
+                X_train = features[train_index]
+                y_train = samples[config['label_column_name']].to_numpy()[train_index]
+                
+                rf = RandomForestClassifier(n_estimators=n_estimators, random_state=seed)
+
+                # Fit the classifier to the data
+                rf.fit(X_train, y_train)
+
+                # Make predictions on the test set and apply threshold
+                prediction = rf.predict(X_val)
+
+                if prediction == y_val:
+                    correct_val += 1
+            
+            # Train on all training set
+            rf = RandomForestClassifier(n_estimators=n_estimators, random_state=seed)
+            rf.fit(features[rest_index], samples[config['label_column_name']].to_numpy()[rest_index])
+
+            X_test = features[test_index]
+            y_test = samples[config['label_column_name']].to_numpy()[test_index]
+            predictions_test = rf.predict(X_test)
+            test_acc = accuracy_score(y_test, predictions_test)
+            log.append((lam1,lam2,rt1_th,rt2_th,correct_val/(rest_index.shape[0]),test_acc,test_index,n_estimators))
+
+            logger.info(f'lam1: {lam1}, lam2: {lam2}, rt1_threshold: {rt1_th}, rt2_threshold: {rt2_th}, n_estimators: {n_estimators}, test_acc: {test_acc}')
+    pd.DataFrame(log,columns=['lam1','lam2','rt1_threshold','rt2_threshold','val_acc','test_acc','test_id', 'n_estimators']).to_csv(os.path.join(config['eval_path'],f'eval_seed_{seed}.csv'),index=False)
+
 def calc_accuracy(config):
     labels = pd.read_csv(config['labels_path'])
     test = np.ones((len(labels),2))
@@ -111,26 +218,47 @@ def eval(config):
     lam2 = config[model]['lambda2']
     rt1_threshold = config[model]['rt1_threshold']
     rt2_threshold = config[model]['rt2_threshold']
-
-    Cs = config[model]['C']
     num_seeds = 10
 
     # Generate a set of unique random seeds
     np.random.seed(42)
     seeds = np.random.choice(range(1, 1001), size=num_seeds, replace=False)
 
-    params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs))
     create_folder_if_not_exists(config['eval_path'])
 
     logger.info(f'Model: {model}')
     logger.info('Starting evaluation')    
     if model == 'lr_l2' or model == 'lr_l1':
+        Cs = config[model]['C']
+        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs))
         if config['parallel_processing']:
             with concurrent.futures.ProcessPoolExecutor() as executor:
                 executor.map(process_seed_lr, seeds, [params_combination]*num_seeds, [config]*num_seeds)
         else:
             for seed in seeds:
                 process_seed_lr(seed, params_combination, config)
+
+    elif model == 'svm':
+        Cs = config[model]['C']
+        kernels = config[model]['kernel']
+        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs,kernels))
+
+        if config['parallel_processing']:
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                executor.map(process_seed_svm, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+        else:
+            for seed in seeds:
+                process_seed_svm(seed, params_combination, config)
+    elif model == 'rf':
+        n_estimators = config[model]['n_estimators']
+        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,n_estimators))
+
+        if config['parallel_processing']:
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                executor.map(process_seed_rf, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+        else:
+            for seed in seeds:
+                process_seed_rf(seed, params_combination, config)
 
     
     logger.info('Evaluation finished')
