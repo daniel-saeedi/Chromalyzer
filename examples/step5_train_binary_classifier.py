@@ -15,7 +15,7 @@ config = {
     "results_dir": "/usr/scratch/chromalyzer/lr_l2_results/",
 
     # Logistic Regression with L2 regularization
-    "C": 1.0,
+    "C": 0.01,
     "seed": 42,
     "number_of_bootstraps": 100,
     "lambda1": 0.75,

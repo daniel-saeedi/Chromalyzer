@@ -184,7 +184,7 @@ def binary_classifier(args):
     plot_top_features(X_train, coefficients_pvalues, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
     signaturs_combined = pd.concat([signatures_class0,signatures_class1]).sort_values(by='coefficient',key=abs,ascending=False).reset_index(drop=True)
     signaturs_combined.index = signaturs_combined.index + 1
-    signaturs_combined.head(10).to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
+    signaturs_combined.head(20).to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
     logger.info('Top 10 signatures plotted in top_coefficients folder.')
 
     # Plotting PCA
@@ -197,10 +197,11 @@ def binary_classifier(args):
 
     logger.info('2D plot of peaks and signatures saved.')
     # Plotting 3D plot of peaks (png)
-    plot_3d_peaks(peaks_features_df, samples,args['results_dir'])
+    plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'biotic',view = 'large')
+    plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'abiotic', view = 'large')
 
     # Plotting 3D plot of signatures (png)
-    plot_3d_signatures(signaturs_combined, args['results_dir'])
+    plot_3d_signatures(signaturs_combined, args['results_dir'],view = 'large')
     logger.info('3D plot of signatures (png) saved.')
 
     # Interactable 3D plot for peaks

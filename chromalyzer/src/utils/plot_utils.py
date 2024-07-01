@@ -1,5 +1,8 @@
 import random
+from matplotlib.markers import MarkerStyle
+from matplotlib.path import Path
 import matplotlib.pyplot as plt
+from matplotlib.transforms import Affine2D
 import seaborn as sns
 import matplotlib.colors as mcolors
 import os
@@ -11,7 +14,10 @@ import plotly.graph_objects as go
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+import matplotlib as mpl
 import matplotlib.cm as cm
+from svgpathtools import svg2paths
+from svgpath2mpl import parse_path
 
 
 def plot_top_coefficients(coefficients_pvalues, results_dir, top_n=10):
@@ -233,7 +239,7 @@ def plot_3d_signatures_interactable(all_signatures, result_dir):
 
     fig.write_html(os.path.join(result_dir,'3d_plots_signatures_interactable.html'))
 
-def plot_3d_signatures(all_signatures, result_dir):
+def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     all_signatures = all_signatures.copy()
     rt1_center = []
     rt2_center = []
@@ -252,29 +258,43 @@ def plot_3d_signatures(all_signatures, result_dir):
 
     all_signatures = all_signatures.sort_values(by=['m/z','RT1_center', 'RT2_center'], ascending=[True,True, True])
 
-    legend_sizes = [0.9*2000,  # Max size
-                    0.50 * 2000,
-                    0.25 * 800]  # Min size
+    if view == 'small':
+        legend_sizes = [3000,
+                        1500,
+                        750,
+                        355,
+                        150]
+    else:
+        legend_sizes = [5000,
+                        2500,
+                        1800,
+                        800,
+                        400]
 
     all_signatures['point_size'] = 0
     for idx, row in all_signatures.iterrows():
-        # if row['class'] == '1':
-        #     continue
-        # if idx != 5: 
-        #     continue
-        if row['coefficient_abs'] >= 0.5:
+
+        if row['coefficient_abs'] >= 0.02:
             all_signatures.at[idx, 'point_size'] = legend_sizes[0]
-        elif row['coefficient_abs'] >= 0.25:
+        elif row['coefficient_abs'] >= 0.015:
             all_signatures.at[idx, 'point_size'] = legend_sizes[1]
-        else:
+        elif row['coefficient_abs'] >= 0.01:
             all_signatures.at[idx, 'point_size'] = legend_sizes[2]
+        elif row['coefficient_abs'] >= 0.005:
+            all_signatures.at[idx, 'point_size'] = legend_sizes[3]
+        else:
+            all_signatures.at[idx, 'point_size'] = legend_sizes[4]
 
     all_signatures = all_signatures.sort_values(by='point_size', ascending=False)
 
     # Create a dictionary to map class strings to specific colors
     color_map = {'0': '#e64b35', '1': '#3c5488'}
 
-    fig = plt.figure(figsize=(10, 10))
+    if view == 'small':
+        fig = plt.figure(figsize=(12, 12))
+    else:
+        fig = plt.figure(figsize=(20, 20))
+
     ax = fig.add_subplot(111, projection='3d')
 
     # Convert class to string if not already and adjust RT1_center for minutes and rounding
@@ -293,9 +313,9 @@ def plot_3d_signatures(all_signatures, result_dir):
     )
 
     # Adding labels and title
-    ax.set_xlabel('2nd Time (s)')
-    ax.set_ylabel('1st Time (min)')
-    ax.set_zlabel('m/z')
+    ax.set_xlabel('2nd Time (s)', labelpad=20)
+    ax.set_ylabel('1st Time (min)', labelpad=20)
+    ax.set_zlabel('m/z', labelpad=20)
 
     # Set tick font size
     ax.tick_params(axis='both', which='major', labelsize=20)
@@ -305,16 +325,22 @@ def plot_3d_signatures(all_signatures, result_dir):
     ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
     ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
-    ax.set_box_aspect([2, 3, 1.5])  # Set aspect ratio to be equal
+    if view == 'small':
+        ax.set_box_aspect([2.5, 4, 2])
+    else:
+        ax.set_box_aspect([3, 4, 2])
 
     # Adjusting the view and plot appearance
-    ax.view_init(elev=20, azim=-150)
+    # Adjusting the view and plot appearance
+    if view == 'small':
+        ax.view_init(elev=20, azim=-120)
+    else:
+        ax.view_init(elev=10, azim=-179)
     plt.tight_layout()
-    # plt.title('3D Scatter Plot of Signature')
 
     # Create legend handles
     legend_handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=np.sqrt(s), label=label)
-                    for s, label in zip(legend_sizes, ['> 0.50', '0.25 - 0.50','< 0.25'])]
+                    for s, label in zip(legend_sizes, ['> 0.02', '0.015 - 0.02','0.01 - 0.015','0.05 - 0.01','< 0.005'])]
 
     # Add the legend to the plot
     legend1 = ax.legend(handles=legend_handles, title="Coefficent", fontsize='16', title_fontsize='16',handlelength=3,labelspacing=2, loc='upper right')
@@ -322,35 +348,103 @@ def plot_3d_signatures(all_signatures, result_dir):
 
     ax.legend(handles=[Patch(facecolor=color_map['0'], label='Abiotic'), Patch(facecolor=color_map['1'], label='Biotic')], fontsize='16', title_fontsize='16',handlelength=3,labelspacing=1, loc='upper left' )
 
-    ax.set_xlim(all_signatures['RT2_center'].min() - 0.2, all_signatures['RT2_center'].max())
-    ax.set_ylim(all_signatures['RT1_center'].min(), all_signatures['RT1_center'].max())
-    ax.set_zlim(all_signatures['m/z'].min(), all_signatures['m/z'].max())
+    ax.set_xlim(all_signatures['RT2_center'].min(), 3.5)
+    ax.set_ylim(all_signatures['RT1_center'].min()-10, 190)
+    ax.set_zlim(all_signatures['m/z'].min(),680)
 
     # Background color
     plt.gcf().set_facecolor('white')
     plt.gca().set_facecolor('white')
 
     # Change the color of the gridlines
-    ax.xaxis._axinfo['grid'].update(color = 'gray', linestyle = '-')
-    ax.yaxis._axinfo['grid'].update(color = 'gray', linestyle = '-')
-    ax.zaxis._axinfo['grid'].update(color = 'gray', linestyle = '-')
+    ax.xaxis._axinfo['grid'].update(color = 'gray', linestyle = '-' , linewidth=0.5)
+    ax.yaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
+    ax.zaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
 
     plt.savefig(os.path.join(result_dir, 'Signatures_3d.pdf'), format='pdf')
     plt.close()
 
-def plot_3d_peaks(peaks_features_df, samples,result_dir):
+import matplotlib.markers as mmarkers
+
+def create_half_filled_marker(rotation=45):
+    # Define the marker path
+    marker = mmarkers.MarkerStyle(marker='o')
+    path = marker.get_path().transformed(marker.get_transform())
+
+    # Create a wedge to represent the half-filled portion
+    wedge = mmarkers.MarkerStyle(marker='|')
+    wedge_path = wedge.get_path().transformed(Affine2D().scale(1.5, 1.5).rotate_deg(rotation))
+
+    # Combine the paths
+    combined_path = path.intersect_path(wedge_path)
+    
+    return combined_path
+
+def get_marker(svg_path):
+    cwd = os.getcwd()
+    custom_path, attributes = svg2paths(svg_path)
+    marker = parse_path(attributes[0]['d'])
+    marker.vertices -= marker.vertices.mean(axis=0)
+    marker = marker.transformed(mpl.transforms.Affine2D().rotate_deg(180))
+    marker = marker.transformed(mpl.transforms.Affine2D().scale(-1,1))
+    return marker
+def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view = 'small'):
     peaks_features_df = peaks_features_df.copy()
-    # Drop class 0
-    # selected_samples = samples[samples['label']==1]['csv_file_name'].unique()
-    selected_samples = samples['csv_file_name'].unique()
+    if label == 'biotic':
+        selected_samples = samples[samples['label']==1]['csv_file_name'].unique()
+    else:
+        selected_samples = samples[samples['label']==0]['csv_file_name'].unique()
     peaks_features_df = peaks_features_df[peaks_features_df['sample'].isin(selected_samples)]
 
-    peaks_features_df['point_size'] = 200
+    peaks_features_df['point_size'] = 700
     
-    markers = ['.','v','^','<','>','1','s','p','D','P','X','*','H','h','+','x','d','|']
-    # colors = ['#e64b35', '#3c5488', '#f8951e', '#35b549', '#ff3333', '#a1caf7', '#f4c430', '#f4a460', '#ff4500', '#ff6347', '#ff69b4', '#ff7f50', '#ff8c00', '#ffa07a', '#ffa500', '#ff4500', '#ff6347', '#ff69b4', '#ff7f50', '#ff8c00', '#ffa07a', '#ffa500']
+    import matplotlib.path as mpath
 
-    fig = plt.figure(figsize=(12, 14))
+    verts = [
+        (1,-1), #lower right
+        (-1,-1), #lower left 
+        (-1,1), #upper left 
+        (1,1), #upper right
+        (1,-1), #lower right
+    ]
+
+    codes = [
+        Path.MOVETO, #begin the figure in the lower right
+        Path.CURVE3, #start a 3 point curve with the control point in lower left
+        Path.LINETO, #end curve in the upper left
+        Path.CURVE3, #start a new 3 point curve with the upper right as a control point
+        Path.LINETO, #end curve in lower right
+    ]
+
+    oval = Path(verts,codes)
+
+    star_marker = get_marker('markers/star_custom.svg')
+    pentagon_marker = get_marker('markers/pentagon_curved.svg')
+
+    
+    markers_biotic = ['P',MarkerStyle("o", fillstyle="left"),'X','H','h','x',star_marker,'d',oval,pentagon_marker]
+    colors_biotic = ["#d9ed92", "#b5e48c", "#99d98c", "#76c893", "#52b69a", "#27375f", "#34a0a4", "#1a759f", "#1e6091", "#3c5488"]
+    random.seed(43)
+    # Shuffle only positions of markers and colors
+    random.shuffle(markers_biotic)
+    random.shuffle(colors_biotic)
+
+    markers_abiotic = ['v','^','<','>','1','s','p','D']
+    colors_abiotic = ["#ff6655", "#e64b35", "#d6452e", "#cc4130", "#b33a28", "#993322", "#803020", "#ff5e4d", "#e6594c", "#d1564b"]
+    random.shuffle(markers_abiotic)
+    random.shuffle(colors_abiotic)
+
+    if label == 'biotic':
+        markers = markers_biotic
+        colors = colors_biotic
+    else:
+        markers = markers_abiotic
+        colors = colors_abiotic
+
+    if view == 'small':
+        fig = plt.figure(figsize=(12, 12))
+    else:
+        fig = plt.figure(figsize=(20, 20))
     ax = fig.add_subplot(111, projection='3d')
 
     # Convert class to string if not already and adjust RT1_center for minutes and rounding
@@ -361,13 +455,11 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir):
     for i, sample in enumerate(selected_samples):
         sample_df = peaks_features_df[(peaks_features_df['sample'] == sample)]
         label = samples[samples['csv_file_name'] == sample]['label'].values[0]
-        color = '#e64b35' if label == 0 else '#3c5488'
-        
         ax.scatter(
             sample_df['RT2'],
             sample_df['RT1'],
             sample_df['m/z'],
-            c=color,
+            c=colors[i % len(colors)],
             marker=markers[i % len(markers)],
             s=sample_df['point_size'],
             alpha=1,
@@ -383,15 +475,21 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir):
     # Set tick font size
     ax.tick_params(axis='both', which='major', labelsize=20)
 
-    ax.set_box_aspect([2.5, 4, 2])  # Set aspect ratio to be equal
+    if view == 'small':
+        ax.set_box_aspect([2.5, 4, 2])
+    else:
+        ax.set_box_aspect([3, 4, 2])
 
     # Adjusting the view and plot appearance
-    ax.view_init(elev=20, azim=-150)
+    if view == 'small':
+        ax.view_init(elev=20, azim=-120)
+    else:
+        ax.view_init(elev=20, azim=-179)
     plt.tight_layout()
 
-    ax.set_xlim(peaks_features_df['RT2'].min() - 0.2, peaks_features_df['RT2'].max())
-    ax.set_ylim(peaks_features_df['RT1'].min(), peaks_features_df['RT1'].max())
-    ax.set_zlim(peaks_features_df['m/z'].min(), peaks_features_df['m/z'].max())
+    ax.set_xlim(peaks_features_df['RT2'].min(), 3.5)
+    ax.set_ylim(peaks_features_df['RT1'].min()-3, 190)
+    ax.set_zlim(peaks_features_df['m/z'].min(), 680)
 
     # Background color
     plt.gcf().set_facecolor('white')
@@ -408,13 +506,13 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir):
     ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
     # Add legend at the bottom of the plot
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=1)
+    ax.legend(loc='lower center', bbox_to_anchor=(0.5, 0), ncol=2)
 
     # Adjust layout to make room for the legend
     # Adjust layout to make room for the legend
-    plt.subplots_adjust(bottom=0.25,left=0.25,right=0.75,top=0.75)
+    # plt.subplots_adjust(bottom=0.25,left=0.25,right=0.75,top=0.75)
 
-    plt.savefig(os.path.join(result_dir, 'Peaks_3d_Biotic.pdf'), format='pdf')
+    plt.savefig(os.path.join(result_dir, f'Peaks_3d_{label}.pdf'), format='pdf')
     plt.close()
 
 

@@ -1,7 +1,7 @@
 import chromalyzer
 
 config = {
-    "parallel_processing": True,
+    "parallel_processing": False,
     "mz_list_path": "data/all_mz_values.csv",
     "labels_path": "data/labels.csv",
     "m_z_column_name": "M/Z",
@@ -13,7 +13,7 @@ config = {
 
     "features_path": "/usr/scratch/chromalyzer/features/",
     "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
-    "eval_path":"/usr/scratch/chromalyzer/eval_path/NaiveBayes/",
+    "eval_path":"/usr/scratch/chromalyzer/eval_path/xgboost/",
 
 
     # "model": "svm",
@@ -27,19 +27,19 @@ config = {
     #     "rt2_threshold": range(5,300,5)
     # },
 
-    # "model": "knn",
-    # "knn": {
-    #     "n_neighbors": [1,2,3,4,5,6,7,8,9,10],
-    #     "seed": 42,
-    #     "lambda1": [0.75],
-    #     "lambda2": [5.0],
-    #     "rt1_threshold": [10],
-    #     "rt2_threshold": range(5,300,5)
-    # }
+    "model": "xgboost",
+    "xgboost": {
+        "n_estimators": [20, 50, 100, 200, 500],
+        "seed": 42,
+        "lambda1": [0.75],
+        "lambda2": [5.0],
+        "rt1_threshold": [10],
+        "rt2_threshold": range(20,120,20)
+    }
 
 
-    # "model": "lr_l1",
-    # "lr_l1": {
+    # "model": "lr_l2",
+    # "lr_l2": {
     #     "C": [1e-4,1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3,1e+4],
     #     "seed": 42,
     #     "lambda1": [0.75],
@@ -48,15 +48,15 @@ config = {
     #     "rt2_threshold": range(5,300,5)
     # }
 
-    "model": 'NaiveBayes',
-    "NaiveBayes": {
-        "alpha": [0.01, 0.1, 0.5, 1, 5, 10],
-        "seed": 42,
-        "lambda1": [0.75],
-        "lambda2": [5.0],
-        "rt1_threshold": [10],
-        "rt2_threshold": range(5,300,5)
-    }
+    # "model": 'NaiveBayes',
+    # "NaiveBayes": {
+    #     "alpha": [0.01, 0.1, 0.5, 1, 5, 10],
+    #     "seed": 42,
+    #     "lambda1": [0.75],
+    #     "lambda2": [5.0],
+    #     "rt1_threshold": [10],
+    #     "rt2_threshold": range(5,300,5)
+    # }
     
 }
 
