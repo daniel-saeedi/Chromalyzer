@@ -17,7 +17,7 @@ config = {
     # Logistic Regression with L2 regularization
     "C": 0.01,
     "seed": 42,
-    "number_of_bootstraps": 100,
+    "number_of_bootstraps": 1000,
     "lambda1": 0.75,
     "lambda2": 5.0,
     "rt1_threshold": 10,

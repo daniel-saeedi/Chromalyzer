@@ -14,15 +14,15 @@ config = {
     "plot_dir": "/usr/scratch/chromalyzer/plots/",
     
     # Boolean flag indicating whether all samples should be processed
-    "all_samples": True,
+    "all_samples": False,
     
     # Name of the sample to be analyzed if all_samples is False
-    "sample_name": "sample_name",
+    "sample_name": "231003_01_AZ_400uLDCM_100oC24h.csv",
 
     "csv_file_name_column": "csv_file_name",
     
     # What m/z value to plot
-    "m_z": "128"
+    "m_z": "219"
 }
 
 chromalyzer.plot_heatmap.plot_heatmap(config)

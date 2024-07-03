@@ -20,6 +20,7 @@ from svgpathtools import svg2paths
 from svgpath2mpl import parse_path
 
 
+
 def plot_top_coefficients(coefficients_pvalues, results_dir, top_n=10):
     """
     Plot the top n coefficients with the highest absolute values.
@@ -29,14 +30,14 @@ def plot_top_coefficients(coefficients_pvalues, results_dir, top_n=10):
     top_features = coefficients_pvalues[:top_n]
 
     # Extract the importance values and feature names
-    coefficientections = [coefficientection for _, coefficientection , _ in top_features]
+    coeffs = [coeff for _, coeff in top_features]
     feature_ids = [i for i in range(0,top_n)]
 
     # Plot the feature importances
     plt.figure(figsize=(5, 3))
     for feature_id in feature_ids:
-        label = 'Class 0' if coefficientections[feature_id] < 0 else 'Class 1'
-        plt.bar(feature_id,abs(coefficientections[feature_id]),label=label,color='#ff3333' if label == 'Class 0' else '#3c5488')
+        label = 'Class 0' if coeffs[feature_id] < 0 else 'Class 1'
+        plt.bar(feature_id,abs(coeffs[feature_id]),label=label,color='#ff3333' if label == 'Class 0' else '#3c5488')
     plt.xlabel('Feature')
     plt.ylabel('Coefficient')
     plt.xticks(feature_ids,range(1,top_n+1), rotation=90)
@@ -58,8 +59,8 @@ def plot_top_coefficients(coefficients_pvalues, results_dir, top_n=10):
     plt.show()
     plt.savefig(os.path.join(results_dir,f'top_{top_n}_coefficient.pdf'),format='pdf', bbox_inches='tight', dpi=300)
 
-def plot_top_features(X_train, coefficients_pvalues, train_samples, results_dir, label_column_name, csv_file_name_column, top_n=10):
-    X_selected = X_train[:, coefficients_pvalues[:top_n,0].astype(int)]
+def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n=10):
+    X_selected = X_train[:, coefficients[:top_n,0].astype(int)]
 
     X_sorted = X_selected[train_samples.sort_values(label_column_name).index].copy()
 
@@ -100,7 +101,7 @@ def plot_pca(features, labels, samples_name ,coefficients_pvalues, results_dir, 
     pca = PCA(n_components=2)
     pca.fit(X_selected)
     X_embedded = pca.transform(X_selected)
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(20, 15))
 
     ax = plt.gca()  # Get current axis
     ax.spines['top'].set_visible(False)
@@ -126,9 +127,10 @@ def plot_pca(features, labels, samples_name ,coefficients_pvalues, results_dir, 
         # Add text labels with arrows
         x_end, y_end = X_embedded[idx]
         random_directions = [random.choice([-1, 1]), random.choice([-1, 1])]
-        add_arrow(x_end + random_directions[0] * np.random.randint(15, 80), x_end + random_directions[1] * np.random.randint(15, 80), x_end, y_end, idx)
-
-
+        add_arrow(x_end + random_directions[0] * np.random.randint(15, 80), x_end + random_directions[1] * np.random.randint(15, 80), x_end, y_end, sample_name)
+    
+    plt.xlabel('PC1', fontsize=15)
+    plt.ylabel('PC2', fontsize=15)
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     plt.gcf().set_facecolor('white')  # gcf() - get current figure
@@ -188,10 +190,10 @@ def plot_2d_features(all_signatures, peaks_features_df, num_clusters, result_dir
     plt.savefig(os.path.join(result_dir,'2d_plots_peaks_signatures.pdf'),format='pdf',bbox_inches='tight', dpi=300)
     plt.close()
 
-def plot_3d_peaks_interactable(peaks_features_df, result_dir):
+def plot_3d_peaks_interactive(peaks_features_df, result_dir):
     peaks_features_df_sorted = peaks_features_df.sort_values(by=['m/z','RT1', 'RT2'], ascending=[True,True, True])
     # Create the initial scatter plot
-    fig = px.scatter_3d(peaks_features_df_sorted, x='RT1', y='RT2', z='m/z', color='class', hover_data=['sample','p_value'])
+    fig = px.scatter_3d(peaks_features_df_sorted, x='RT1', y='RT2', z='m/z', color='class', hover_data=['sample'])
     # Update marker size scaling factor if necessary
     fig.update_traces(marker=dict(sizemode='diameter', sizeref=2, sizemin=1,opacity = 0.5))
     # Update layout
@@ -201,9 +203,9 @@ def plot_3d_peaks_interactable(peaks_features_df, result_dir):
         zaxis_title='m/z',
         aspectratio=dict(x=4, y=1, z=1),
     ))
-    fig.write_html(os.path.join(result_dir,'3d_plots_peaks_interactable.html'))
+    fig.write_html(os.path.join(result_dir,'3d_plots_peaks_interactive.html'))
 
-def plot_3d_signatures_interactable(all_signatures, result_dir): 
+def plot_3d_signatures_interactive(all_signatures, result_dir): 
     rt1_center = []
     rt2_center = []
     for idx, signaure in all_signatures.iterrows():
@@ -224,7 +226,7 @@ def plot_3d_signatures_interactable(all_signatures, result_dir):
     # absolute value of the coefficient
     all_signatures_sorted['coefficient_abs'] = all_signatures_sorted['coefficient'].abs()
     # Create the initial scatter plot
-    fig = px.scatter_3d(all_signatures_sorted, x='RT1_center', y='RT2_center', z='m/z', color='class', size='coefficient_abs', hover_data=['samples','RT1','RT2','p_value'])
+    fig = px.scatter_3d(all_signatures_sorted, x='RT1_center', y='RT2_center', z='m/z', color='class', size='coefficient_abs', hover_data=['samples','RT1','RT2'])
 
     # Update marker size scaling factor if necessary
     fig.update_traces(marker=dict(sizemode='diameter', sizeref=2.*max(all_signatures_sorted['coefficient_abs'])/(4.**4), sizemin=1,opacity = 0.5))
@@ -237,7 +239,7 @@ def plot_3d_signatures_interactable(all_signatures, result_dir):
         aspectratio=dict(x=4, y=1, z=1),
     ))
 
-    fig.write_html(os.path.join(result_dir,'3d_plots_signatures_interactable.html'))
+    fig.write_html(os.path.join(result_dir,'3d_plots_signatures_interactive.html'))
 
 def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     all_signatures = all_signatures.copy()

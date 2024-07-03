@@ -9,14 +9,18 @@ import scipy.stats as stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import resample
 from .utils.heatmap_utils import create_folder_if_not_exists
-from .utils.plot_utils import plot_2d_features, plot_3d_peaks, plot_3d_peaks_interactable, plot_3d_signatures, plot_3d_signatures_interactable, plot_distribution_of_peaks, plot_pca, plot_top_coefficients, plot_top_features
+from .utils.plot_utils import plot_2d_features, plot_3d_peaks, plot_3d_peaks_interactive, plot_3d_signatures, plot_3d_signatures_interactive, plot_distribution_of_peaks, plot_pca, plot_top_coefficients, plot_top_features
 import joblib
+from statsmodels.sandbox.stats.multicomp import multipletests
+
+import statsmodels.api as sm
+
 
 def binary_class_signatures(coefficients_pvalues, features_info, results_path,samples,X_train, csv_file_name_column):
     signatures_class_0 = []
     signatures_class_1 = []
 
-    for index,coefficient,p_value in coefficients_pvalues:
+    for index,coefficient in coefficients_pvalues:
         index = int(index)
         m_z = features_info.iloc[index]['m/z']
         first_time_start = features_info.iloc[index]['RT1_start']
@@ -36,48 +40,22 @@ def binary_class_signatures(coefficients_pvalues, features_info, results_path,sa
         cluster_label = int(values[np.argmax(counts)])
         if coefficient < 0:
             # Abiotic
-            signatures_class_0.append([p_value,coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,cluster_label])
+            signatures_class_0.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,cluster_label])
         else:
             # Biotic
-            signatures_class_1.append([p_value,coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,cluster_label])
+            signatures_class_1.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,cluster_label])
 
 
     create_folder_if_not_exists(os.path.join(results_path))
-    signatures_class0 = pd.DataFrame(signatures_class_0,columns=['p_value','coefficient','m/z','RT1','RT2','samples','class'])
-    signatures_class1 = pd.DataFrame(signatures_class_1,columns=['p_value','coefficient','m/z','RT1','RT2','samples','class'])
+    signatures_class0 = pd.DataFrame(signatures_class_0,columns=['coefficient','m/z','RT1','RT2','samples','class'])
+    signatures_class1 = pd.DataFrame(signatures_class_1,columns=['coefficient','m/z','RT1','RT2','samples','class'])
 
     signatures_class0.to_csv(os.path.join(results_path ,f'lr_l2_class0_signatures.csv'))
     signatures_class1.to_csv(os.path.join(results_path, f'lr_l2_class1_signatures.csv'))
 
     return signatures_class0, signatures_class1
-    
 
-def calculate_pvalues(num_bootstraps, C, seed, X_train, samples, label_column_name):
-    # Bootstrap sampling
-    coefficients = []
-    for i in range(num_bootstraps):
-        model = LogisticRegression(penalty='l2', solver='liblinear', C=C, random_state=seed)
-        X_boot, y_boot = resample(X_train, samples[label_column_name].to_numpy(), random_state=i)  # Resample with replacement
-        
-        # Check if both classes are present in the resampled data
-        if len(np.unique(y_boot)) < 2:
-            continue  # Skip this iteration if only one class is present
-        
-        model.fit(X_boot, y_boot)  # Fit the model on the bootstrapped sample
-        coefficients.append(model.coef_[0])  # Store the coefficients
 
-    coefficients = np.array(coefficients)
-    if len(coefficients) == 0:
-        raise ValueError("All resampled datasets contained only one class. Unable to calculate p-values.")
-
-    mean_coefs = np.mean(coefficients, axis=0)  # Average coefficient from bootstraps
-    standard_errors = np.std(coefficients, axis=0)  # Standard errors of coefficients
-
-    # Calculate Z-scores and p-values
-    z_scores = mean_coefs / (standard_errors + 1e-20)
-    p_values = 2 * (1 - stats.norm.cdf(np.abs(z_scores)))
-
-    return p_values
 
 def is_point_inside_rect(rectangle, point):
     x1 = rectangle[0]
@@ -90,13 +68,13 @@ def is_point_inside_rect(rectangle, point):
 
     return False
 
-def return_peaks_corresponding_to_cluster(peaks_path,m_z,rt1,rt2,feature_id,coefficient,p_value,samples, label):
+def return_peaks_corresponding_to_cluster(peaks_path,m_z,rt1,rt2,feature_id,coefficient,samples, label):
     peaks = pd.read_csv(os.path.join(peaks_path, f'{m_z}.csv'))
 
     peaks_inside_cluster = []
     for idx, peak in peaks.iterrows():
         if is_point_inside_rect([rt1[0],rt2[0],rt1[1],rt2[1]],[peak['RT1_center'],peak['RT2_center']]):
-            peaks_inside_cluster.append((feature_id,peak['RT1_center'],peak['RT2_center'],coefficient,p_value,m_z, peak['csv_file_name'], label))
+            peaks_inside_cluster.append((feature_id,peak['RT1_center'],peak['RT2_center'],coefficient,m_z, peak['csv_file_name'], label))
     
     return peaks_inside_cluster
 
@@ -106,16 +84,15 @@ def get_peaks_feature_df(signaturs_combined,peaks_path):
         m_z = int(row['m/z'])
         rt1 = eval(row['RT1'])
         rt2 = eval(row['RT2'])
-        peaks_features_id += (return_peaks_corresponding_to_cluster(peaks_path, m_z,rt1,rt2,idx,row['coefficient'],row['p_value'],row['samples'],row['class']))
+        peaks_features_id += (return_peaks_corresponding_to_cluster(peaks_path, m_z,rt1,rt2,idx,row['coefficient'],row['samples'],row['class']))
     
-    peaks_features_df = pd.DataFrame(np.array(peaks_features_id),columns=['feature_id','RT1','RT2','coefficient','p_value','m/z','sample','class'])
+    peaks_features_df = pd.DataFrame(np.array(peaks_features_id),columns=['feature_id','RT1','RT2','coefficient','m/z','sample','class'])
 
     peaks_features_df['feature_id'] = peaks_features_df['feature_id'].astype(int)
     peaks_features_df['coefficient'] = peaks_features_df['coefficient'].astype(float)
     peaks_features_df['RT1'] = peaks_features_df['RT1'].astype(float)
     peaks_features_df['RT2'] = peaks_features_df['RT2'].astype(float)
     peaks_features_df['m/z'] = peaks_features_df['m/z'].astype(float)
-    peaks_features_df['p_value'] = peaks_features_df['p_value'].astype(float)
     num_clusters = peaks_features_df['feature_id'].max()
 
     return peaks_features_df, num_clusters
@@ -166,29 +143,29 @@ def binary_classifier(args):
             logger.info(f'Predicted label for {sample_name}: {pred}')
 
     # Get the p-values
-    p_values = calculate_pvalues(args['number_of_bootstraps'], C, seed, X_train, train_samples, args['label_column_name'])
-    logger.info('P-values calculated.')
+    # p_values = calculate_pvalues(args['number_of_bootstraps'], C, seed, X_train, train_samples, args['label_column_name'])
+    # logger.info('P-values calculated.')
 
-    # Combine the coefficients and p-values
-    coefficients_pvalues = sorted(enumerate(coefficients), key=lambda x: abs(x[1]), reverse=True)
-    coefficients_pvalues = np.array([(index, value, p_values[index]) for index, value in coefficients_pvalues])
+    # Combine the coefficients
+    coefficients = sorted(enumerate(coefficients), key=lambda x: abs(x[1]), reverse=True)
+    coefficients = np.array([(index, value) for index, value in coefficients])
 
     # Save signatures per class
-    signatures_class0, signatures_class1 = binary_class_signatures(coefficients_pvalues, features_info, args['results_dir'],train_samples,X_train, args['csv_file_name_column'])
+    signatures_class0, signatures_class1 = binary_class_signatures(coefficients, features_info, args['results_dir'],train_samples,X_train, args['csv_file_name_column'])
     logger.info('Signatures saved.')
 
     # Plotting top 10 highest to lowest coefficients
     top_featurs_path = os.path.join(args['results_dir'] ,'top_features/')
     create_folder_if_not_exists(top_featurs_path)
-    plot_top_coefficients(coefficients_pvalues, top_featurs_path)
-    plot_top_features(X_train, coefficients_pvalues, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
+    plot_top_coefficients(coefficients, top_featurs_path)
+    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
     signaturs_combined = pd.concat([signatures_class0,signatures_class1]).sort_values(by='coefficient',key=abs,ascending=False).reset_index(drop=True)
     signaturs_combined.index = signaturs_combined.index + 1
     signaturs_combined.head(20).to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
     logger.info('Top 10 signatures plotted in top_coefficients folder.')
 
     # Plotting PCA
-    plot_pca(features, samples[args['label_column_name']].tolist(), samples[args['csv_file_name_column']].tolist() ,coefficients_pvalues, args['results_dir'])
+    plot_pca(features, samples[args['label_column_name']].tolist(), samples['sample_name'].tolist() ,coefficients, args['results_dir'])
     logger.info('PCA plot saved.')
 
     # Plotting 2D plot of peaks and signatures.
@@ -204,12 +181,12 @@ def binary_classifier(args):
     plot_3d_signatures(signaturs_combined, args['results_dir'],view = 'large')
     logger.info('3D plot of signatures (png) saved.')
 
-    # Interactable 3D plot for peaks
-    plot_3d_peaks_interactable(peaks_features_df, args['results_dir'])
+    # interactive 3D plot for peaks
+    plot_3d_peaks_interactive(peaks_features_df, args['results_dir'])
     logger.info('3D interactive plot of peaks saved.')
 
-    # Interactable 3D plot for signatures
-    plot_3d_signatures_interactable(signaturs_combined, args['results_dir'])
+    # interactive 3D plot for signatures
+    plot_3d_signatures_interactive(signaturs_combined, args['results_dir'])
     logger.info('3D interactive plot of signatures saved.')
 
     # Distribution of peaks across m/z values
