@@ -296,6 +296,7 @@ def calc_accuracy(config):
 
     avg_val_per_seed = []
     avg_test_per_seed = []
+    std_test_per_seed = []
 
     for seed in seeds:
         val_acc = []
@@ -319,85 +320,89 @@ def calc_accuracy(config):
 
         avg_val_per_seed.append(np.array(val_acc).mean()*100)
         avg_test_per_seed.append(np.array(test_acc).mean()*100)
-    
+
+        std_test_per_seed.append(np.array(test_acc).std()*100)
     logger.info(f'avg validation acc: {np.array(avg_val_per_seed).mean()}±{np.array(avg_val_per_seed).std()}')
     logger.info(f'avg test acc: {np.array(avg_test_per_seed).mean()}±{np.array(avg_test_per_seed).std()}')
 
+    print(avg_test_per_seed)
+    print(std_test_per_seed)
+
 def eval(config):
-    model = config['model']
+    # model = config['model']
 
-    log_path = os.path.join(config['eval_path'], 'eval.log')
-    logger.add(log_path, rotation="10 MB")
+    # log_path = os.path.join(config['eval_path'], 'eval.log')
+    # logger.add(log_path, rotation="10 MB")
 
-    lam1 = config[model]['lambda1']
-    lam2 = config[model]['lambda2']
-    rt1_threshold = config[model]['rt1_threshold']
-    rt2_threshold = config[model]['rt2_threshold']
-    num_seeds = 10
+    # lam1 = config[model]['lambda1']
+    # lam2 = config[model]['lambda2']
+    # rt1_threshold = config[model]['rt1_threshold']
+    # rt2_threshold = config[model]['rt2_threshold']
+    # num_seeds = 10
 
-    # Generate a set of unique random seeds
-    np.random.seed(42)
-    seeds = np.random.choice(range(1, 1001), size=num_seeds, replace=False)
+    # # Generate a set of unique random seeds
+    # np.random.seed(42)
+    # seeds = np.random.choice(range(1, 1001), size=num_seeds, replace=False)
 
-    create_folder_if_not_exists(config['eval_path'])
+    # create_folder_if_not_exists(config['eval_path'])
 
-    logger.info(f'Model: {model}')
-    logger.info('Starting evaluation')    
-    if model == 'lr_l2' or model == 'lr_l1':
-        Cs = config[model]['C']
-        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs))
-        if config['parallel_processing']:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                executor.map(process_seed_lr, seeds, [params_combination]*num_seeds, [config]*num_seeds)
-        else:
-            for seed in seeds:
-                process_seed_lr(seed, params_combination, config)
+    # logger.info(f'Model: {model}')
+    # logger.info('Starting evaluation')    
+    # if model == 'lr_l2' or model == 'lr_l1':
+    #     Cs = config[model]['C']
+    #     params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs))
+    #     if config['parallel_processing']:
+    #         with concurrent.futures.ProcessPoolExecutor() as executor:
+    #             executor.map(process_seed_lr, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+    #     else:
+    #         for seed in seeds:
+    #             process_seed_lr(seed, params_combination, config)
 
-    elif model == 'svm':
-        Cs = config[model]['C']
-        kernels = config[model]['kernel']
-        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs,kernels))
+    # elif model == 'svm':
+    #     Cs = config[model]['C']
+    #     kernels = config[model]['kernel']
+    #     params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,Cs,kernels))
 
-        if config['parallel_processing']:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                executor.map(process_seed_svm, seeds, [params_combination]*num_seeds, [config]*num_seeds)
-        else:
-            for seed in seeds:
-                process_seed_svm(seed, params_combination, config)
-    elif model == 'rf':
-        n_estimators = config[model]['n_estimators']
-        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,n_estimators))
+    #     if config['parallel_processing']:
+    #         with concurrent.futures.ProcessPoolExecutor() as executor:
+    #             executor.map(process_seed_svm, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+    #     else:
+    #         for seed in seeds:
+    #             process_seed_svm(seed, params_combination, config)
+    # elif model == 'rf':
+    #     n_estimators = config[model]['n_estimators']
+    #     params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,n_estimators))
 
-        if config['parallel_processing']:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                executor.map(process_seed_rf, seeds, [params_combination]*num_seeds, [config]*num_seeds)
-        else:
-            for seed in seeds:
-                process_seed_rf(seed, params_combination, config)
-    elif model == 'xgboost':
-        n_estimators = config[model]['n_estimators']
-        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,n_estimators))
+    #     if config['parallel_processing']:
+    #         with concurrent.futures.ProcessPoolExecutor() as executor:
+    #             executor.map(process_seed_rf, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+    #     else:
+    #         for seed in seeds:
+    #             process_seed_rf(seed, params_combination, config)
+    # elif model == 'xgboost':
+    #     n_estimators = config[model]['n_estimators']
+    #     params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,n_estimators))
 
-        if config['parallel_processing']:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                executor.map(process_seed_xgboost, seeds, [params_combination]*num_seeds, [config]*num_seeds)
-        else:
-            for seed in seeds:
-                process_seed_xgboost(seed, params_combination, config)
+    #     if config['parallel_processing']:
+    #         with concurrent.futures.ProcessPoolExecutor() as executor:
+    #             executor.map(process_seed_xgboost, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+    #     else:
+    #         for seed in seeds:
+    #             process_seed_xgboost(seed, params_combination, config)
     
-    elif model == 'NaiveBayes':
-        alpha = config[model]['alpha']
-        params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,alpha))
+    # elif model == 'NaiveBayes':
+    #     alpha = config[model]['alpha']
+    #     params_combination = list(itertools.product(lam1,lam2,rt1_threshold,rt2_threshold,alpha))
 
-        if config['parallel_processing']:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                executor.map(process_seed_NB, seeds, [params_combination]*num_seeds, [config]*num_seeds)
-        else:
-            for seed in seeds:
-                process_seed_NB(seed, params_combination, config)
+    #     if config['parallel_processing']:
+    #         with concurrent.futures.ProcessPoolExecutor() as executor:
+    #             executor.map(process_seed_NB, seeds, [params_combination]*num_seeds, [config]*num_seeds)
+    #     else:
+    #         for seed in seeds:
+    #             process_seed_NB(seed, params_combination, config)
 
     
-    logger.info('Evaluation finished')
+    # logger.info('Evaluation finished')
 
     # Calculate the average accuracy
     calc_accuracy(config)

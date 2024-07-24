@@ -32,6 +32,11 @@ def load_heatmap_data(heatmap_dir, m_z, sample):
     first_time = np.load(os.path.join(heatmap_dir, sample, f'{m_z}_first_time.npy'))
     second_time = np.load(os.path.join(heatmap_dir, sample, f'{m_z}_second_time.npy'))
     heatmap_2d = np.load(os.path.join(heatmap_dir, sample, f'{m_z}.npy'))
+
+    # # Zero-out values below 0.75 * max value (2d array)
+    # max_val = np.max(heatmap_2d)
+    # heatmap_2d[heatmap_2d < 1/2 * max_val] = 0
+
     # Create DataFrame for heatmap
     ht_df = pd.DataFrame(heatmap_2d, index=second_time, columns=first_time)
     return ht_df
@@ -44,16 +49,29 @@ def load_headmaps_list(path_to_heatmaps, samples, m_z):
     return heatmaps
 
 # Plot the heatmap
-def plt_heatmap(path, ht_df, t1_start=0, t1_end=0, t2_start=0, t2_end=0, full_spectrum=False, cluster_rectangles=None, title='', save=False):
+def plt_heatmap(path, ht_df, t1_start=0, t1_end=0, t2_start=0, t2_end=0, full_spectrum=False, cluster_rectangles=None, title='', save=False, round_num = True,small = False):
     plt.rcParams.update({'font.size': 14, 'axes.labelsize': 14, 'axes.titlesize': 14,
                          'xtick.labelsize': 14, 'ytick.labelsize': 14, 'legend.fontsize': 14})
     # Create a custom colormap with the specified hex colors
     ht_df = ht_df.copy()
+
+    if round_num:
+        ht_df.columns = ht_df.columns.astype(int)
+        new_columns = {col: round((int(col)),-2) for col in ht_df.columns if str(col).isnumeric()}
+        ht_df.rename(columns=new_columns, inplace=True)
+
+        # Format y-axis labels to one decimal place
+        ht_df.index = ht_df.index.to_series().round(1)
+
     custom_colors = ['#000000', '#ff4f27', '#f4139c', '#6270e0', '#ffffff']
     cmap = LinearSegmentedColormap.from_list('custom_colormap', custom_colors)
 
     # Generate the heatmap with the custom colormap
-    plt.figure(figsize=(20, 4))
+    
+    if small:
+        plt.figure(figsize=(3, 2))
+    else:
+        plt.figure(figsize=(20, 4))
     ax = sns.heatmap(ht_df, cmap=cmap, rasterized=True)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=12)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=12)

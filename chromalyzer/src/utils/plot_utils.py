@@ -19,47 +19,64 @@ import matplotlib.cm as cm
 from svgpathtools import svg2paths
 from svgpath2mpl import parse_path
 
+colors_biotic = ["#143c55", "#366ea5", "#5aa5d7", "#a0877d","#c3e1e6", "#6db4be", "#c3c378", "#9bbe87", "#279b91", "#9be1af"]
+# Shuffle the colors with seed
+random.seed(102)
+random.shuffle(colors_biotic)
+colors_abiotic = ["#e6550c","#d22323","#410868","#c86468","#932467","#b53778","#f66e5b","#fdcc90"]
+
+def get_feature_name(i, signature_info):
+    RT1 = eval(signature_info['RT1'])
+    RT2 = eval(signature_info['RT2'])
+    # average RT1 and RT2
+    RT1 = ((RT1[0] + RT1[1]) / 2) / 60
+    RT2 = (RT2[0] + RT2[1]) / 2
+
+    return f'({signature_info["m/z"]:.1f}, {RT1:.1f}, {RT2:.1f})'
 
 
-def plot_top_coefficients(coefficients_pvalues, results_dir, top_n=10):
-    """
-    Plot the top n coefficients with the highest absolute values.
-    """
-    
+def plot_top_coefficients(signatures_info, coefficients_pvalues, results_dir, top_n=20):
     # Get the top 30 feature importances
     top_features = coefficients_pvalues[:top_n]
 
     # Extract the importance values and feature names
     coeffs = [coeff for _, coeff in top_features]
-    feature_ids = [i for i in range(0,top_n)]
+    feature_ids = [i for i in range(0, top_n)]
+    features_names = [get_feature_name(i, signatures_info.iloc[i]) for i in range(0, top_n)]
 
     # Plot the feature importances
-    plt.figure(figsize=(5, 3))
-    for feature_id in feature_ids:
-        label = 'Class 0' if coeffs[feature_id] < 0 else 'Class 1'
-        plt.bar(feature_id,abs(coeffs[feature_id]),label=label,color='#ff3333' if label == 'Class 0' else '#3c5488')
+    plt.figure(figsize=(5, 3))  # Increased figure size
+    bars = plt.bar(feature_ids, [abs(c) for c in coeffs], color=['#ff3333' if c < 0 else '#3c5488' for c in coeffs])
+
+    # Add feature names as labels above the bars
+    # for bar, feature_name in zip(bars, features_names):
+    #     height = bar.get_height()
+    #     plt.text(bar.get_x() + bar.get_width(), height, feature_name, ha='center', va='bottom', rotation=45, fontsize=8)
+
+    plt.xticks(feature_ids, features_names, rotation=45, ha='right', fontsize=8)
+
     plt.xlabel('Feature')
     plt.ylabel('Coefficient')
-    plt.xticks(feature_ids,range(1,top_n+1), rotation=90)
 
-    # Adjust x-axis limits
     plt.xlim(-0.5, len(feature_ids) - 0.5)
 
     # Add border lines to left and bottom
-    plt.gca().spines['left'].set_color('grey')
-    plt.gca().spines['left'].set_linewidth(1)
-    plt.gca().spines['bottom'].set_color('grey')
-    plt.gca().spines['bottom'].set_linewidth(1)
+    plt.gca().spines['left'].set_color('black')
+    plt.gca().spines['top'].set_linewidth(0)
+    plt.gca().spines['bottom'].set_color('black')
+    plt.gca().spines['right'].set_linewidth(0)
 
     # Remove the background
     plt.gca().set_facecolor('white')
-    colors = {'Class 0':'#ff3333', 'Class 1':'#3c5488'}         
-    labels = list(colors.keys())
-    handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
-    plt.show()
-    plt.savefig(os.path.join(results_dir,f'top_{top_n}_coefficient.pdf'),format='pdf', bbox_inches='tight', dpi=300)
 
-def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n=10):
+
+    # Display the plot
+    plt.show()
+
+    # Save the plot to a file
+    plt.savefig(os.path.join(results_dir, f'top_{top_n}_coefficient.pdf'), format='pdf', bbox_inches='tight', dpi=300)
+
+def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n=20):
     X_selected = X_train[:, coefficients[:top_n,0].astype(int)]
 
     X_sorted = X_selected[train_samples.sort_values(label_column_name).index].copy()
@@ -68,20 +85,19 @@ def plot_top_features(X_train, coefficients, train_samples, results_dir, label_c
     X_sorted[class_0_count:,:] = np.where(X_sorted[class_0_count:,:] == 1, 2, X_sorted[class_0_count:,:])
 
 
-    plt.figure(figsize=(16,12))
+    # plt.figure(figsize=(16,12))
     sns.set(font_scale=1.4)
 
     # Define colors for each value
-    colors = ["white", "#ff3333", "#3c5488"]  # Colors for 0, 1, and 2 respectively
+    colors = ["white", "#000", "#000"]  # Colors for 0, 1, and 2 respectively
     cmap = mcolors.ListedColormap(colors)
 
     boundaries = [-0.5, 0.5, 1.5, 2.5]
     norm = mcolors.BoundaryNorm(boundaries, cmap.N, clip=True)
 
-
-    sns.heatmap(X_sorted, cmap=cmap, yticklabels=train_samples.sort_values(label_column_name)[csv_file_name_column].to_numpy(),xticklabels=range(1,top_n+1) ,cbar=False, linecolor='gray', linewidth=0.5,square=True)
+    sns.heatmap(X_sorted.T, cmap=cmap, yticklabels=range(1,top_n+1), xticklabels=train_samples.sort_values(label_column_name)[csv_file_name_column].to_numpy() ,cbar=False, linecolor='gray', linewidth=0.5,square=True)
     # Save the plot as a PDF file
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(os.path.join(results_dir,f'top{top_n}_features.pdf'), format="pdf", bbox_inches='tight',dpi=400)
 
 def add_arrow(x_start,y_start,x_end,y_end, text,line_color='#a1caf7'):
@@ -101,33 +117,36 @@ def plot_pca(features, labels, samples_name ,coefficients_pvalues, results_dir, 
     pca = PCA(n_components=2)
     pca.fit(X_selected)
     X_embedded = pca.transform(X_selected)
-    plt.figure(figsize=(20, 15))
+    plt.figure(figsize=(7, 3))
 
     ax = plt.gca()  # Get current axis
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # Set the color of the x-axis and y-axis
-    plt.gca().spines['bottom'].set_edgecolor('black')  # Color for the x-axis
-    plt.gca().spines['left'].set_edgecolor('black')   # Color for the y-axis
+    plt.gca().spines['bottom'].set_edgecolor('black')
+    plt.gca().spines['left'].set_edgecolor('black')
 
-    results = pd.DataFrame(np.concatenate([X_embedded,np.array(labels).reshape(len(labels),-1)],axis = 1),columns=['PC1','PC2','label'])
+    colors = np.array(colors_biotic + colors_abiotic).reshape(-1,1)
+    
+    hollow_square = get_marker('markers/square-svgrepo-com.svg')
+    triangle_marker = get_marker('markers/shape-triangle-svgrepo-com.svg')
 
-    for label in results['label'].unique():
-        if label == -1:
-            color = 'black'
-            marker = 'O'
-            l = 'Unkown'
-        else:
-            color = '#3c5488' if label == 1 else '#e64b35' # Set color based on label
-            marker = 'D' if label == 1 else 'x'  # Set marker based on label
-            l = 'Biotic' if label == 1 else 'Abiotic'
-        plt.scatter(results[results['label'] == label]['PC1'], results[results['label'] == label]['PC2'], label=l, s=100, c=color,marker=marker)
+    markers = np.array([hollow_square]*10 + [triangle_marker]*8).reshape(-1,1)
 
-    for idx, sample_name in enumerate(samples_name):
-        # Add text labels with arrows
-        x_end, y_end = X_embedded[idx]
-        random_directions = [random.choice([-1, 1]), random.choice([-1, 1])]
-        add_arrow(x_end + random_directions[0] * np.random.randint(15, 80), x_end + random_directions[1] * np.random.randint(15, 80), x_end, y_end, sample_name)
+
+    results = pd.DataFrame(np.concatenate([X_embedded,np.array(labels).reshape(len(labels),-1),np.array(samples_name).reshape(len(labels),-1),colors,markers],axis = 1),columns=['PC1','PC2','label','sample_name','color','marker'])
+
+
+    for i in range(len(results)):
+        plt.scatter(results['PC1'][i], results['PC2'][i], color=results['color'][i], label=results['sample_name'][i], s=200, marker=results['marker'][i])
+
+
+    # for idx, sample_name in enumerate(samples_name):
+
+    #     # Add text labels with arrows
+    #     x_end, y_end = X_embedded[idx]
+    #     random_directions = [random.choice([-1, 1]), random.choice([-1, 1])]
+    #     add_arrow(x_end + random_directions[0] * np.random.randint(15, 80), x_end + random_directions[1] * np.random.randint(15, 80), x_end, y_end, sample_name)
     
     plt.xlabel('PC1', fontsize=15)
     plt.ylabel('PC2', fontsize=15)
@@ -315,12 +334,16 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     )
 
     # Adding labels and title
-    ax.set_xlabel('2nd Time (s)', labelpad=20)
-    ax.set_ylabel('1st Time (min)', labelpad=20)
-    ax.set_zlabel('m/z', labelpad=20)
+    ax.set_xlabel('2nd Time (s)', labelpad=30)
+    ax.set_ylabel('1st Time (min)', labelpad=30)
+    ax.set_zlabel('m/z', labelpad=30)
 
     # Set tick font size
     ax.tick_params(axis='both', which='major', labelsize=20)
+    # Increase the space between tick labels and the axes
+    ax.tick_params(axis='x', which='major', pad=15)
+    ax.tick_params(axis='y', which='major', pad=15)
+    ax.tick_params(axis='z', which='major', pad=15)
 
     # Set background color to white and edge color to black
     ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -342,16 +365,19 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
     # Create legend handles
     legend_handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=np.sqrt(s), label=label)
-                    for s, label in zip(legend_sizes, ['> 0.02', '0.015 - 0.02','0.01 - 0.015','0.05 - 0.01','< 0.005'])]
+                  for s, label in zip(legend_sizes, ['> 0.02', '0.015 - 0.02', '0.01 - 0.015', '0.005 - 0.01', '< 0.005'])]
 
     # Add the legend to the plot
-    legend1 = ax.legend(handles=legend_handles, title="Coefficent", fontsize='16', title_fontsize='16',handlelength=3,labelspacing=2, loc='upper right')
+    legend1 = ax.legend(handles=legend_handles, handletextpad=2.5, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=4, frameon=False, ncol=2)
     ax.add_artist(legend1)
 
-    ax.legend(handles=[Patch(facecolor=color_map['0'], label='Abiotic'), Patch(facecolor=color_map['1'], label='Biotic')], fontsize='16', title_fontsize='16',handlelength=3,labelspacing=1, loc='upper left' )
+    ax.legend(handles=[Patch(facecolor=color_map['0'], label='Abiotic'), Patch(facecolor=color_map['1'], label='Biotic')],
+          fontsize='12', title_fontsize='14', handlelength=2, loc='upper left', borderpad=1.2, labelspacing=1.5, frameon=False)
+
+
 
     ax.set_xlim(all_signatures['RT2_center'].min(), 3.5)
-    ax.set_ylim(all_signatures['RT1_center'].min()-10, 190)
+    ax.set_ylim(40, 190)
     ax.set_zlim(all_signatures['m/z'].min(),680)
 
     # Background color
@@ -359,9 +385,9 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     plt.gca().set_facecolor('white')
 
     # Change the color of the gridlines
-    ax.xaxis._axinfo['grid'].update(color = 'gray', linestyle = '-' , linewidth=0.5)
-    ax.yaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
-    ax.zaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
+    ax.xaxis._axinfo['grid'].update(color = '#dcdcdc', linestyle = '-' , linewidth=0.5)
+    ax.yaxis._axinfo['grid'].update(color = '#dcdcdc', linestyle = '-', linewidth=0.5)
+    ax.zaxis._axinfo['grid'].update(color = '#dcdcdc', linestyle = '-', linewidth=0.5)
 
     plt.savefig(os.path.join(result_dir, 'Signatures_3d.pdf'), format='pdf')
     plt.close()
@@ -390,12 +416,14 @@ def get_marker(svg_path):
     marker = marker.transformed(mpl.transforms.Affine2D().rotate_deg(180))
     marker = marker.transformed(mpl.transforms.Affine2D().scale(-1,1))
     return marker
+
+
 def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view = 'small'):
     peaks_features_df = peaks_features_df.copy()
     if label == 'biotic':
-        selected_samples = samples[samples['label']==1]['csv_file_name'].unique()
+        selected_samples = samples[samples['label']==1]['csv_file_name']
     else:
-        selected_samples = samples[samples['label']==0]['csv_file_name'].unique()
+        selected_samples = samples[samples['label']==0]['csv_file_name']
     peaks_features_df = peaks_features_df[peaks_features_df['sample'].isin(selected_samples)]
 
     peaks_features_df['point_size'] = 700
@@ -420,21 +448,32 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
 
     oval = Path(verts,codes)
 
-    star_marker = get_marker('markers/star_custom.svg')
-    pentagon_marker = get_marker('markers/pentagon_curved.svg')
+    pentagon_marker = get_marker('markers/hexagon-figure-form-geometry-graphic-line-svgrepo-com.svg')
+    Hollow_Plus_marker = get_marker('markers/Hollow_Plus.svg')
+    cool_marker2 = get_marker('markers/cool_marker2.svg')
+    cool_marker3 = get_marker('markers/cool_marker3.svg')
+    hollow_circle = get_marker('markers/noun-circle-hatch-empty-1625504.svg')
+    star_marker = get_marker('markers/star-thin-svgrepo-com.svg')
+    diamond = get_marker('markers/diamond-figure-form-geometry-graphic-line-svgrepo-com.svg')
+    pyramid = get_marker('markers/geometry-pyramid-figure-form-graphic-line-svgrepo-com.svg')
+    star_marker2 = get_marker('markers/star-figure-form-geometry-graphic-line-svgrepo-com.svg')
+    hollow_square = get_marker('markers/geometry-shape-square-figure-form-graphic-svgrepo-com.svg')
+    hollow_rectangle = get_marker('markers/shape-svgrepo-com.svg')
+    triangle_marker = get_marker('markers/triangle-svgrepo-com.svg')
+    leaf_marker = get_marker('markers/leaf-97-svgrepo-com.svg')
+    # Small_Plus = get_marker('markers/Small_Plus.svg')
 
     
-    markers_biotic = ['P',MarkerStyle("o", fillstyle="left"),'X','H','h','x',star_marker,'d',oval,pentagon_marker]
-    colors_biotic = ["#d9ed92", "#b5e48c", "#99d98c", "#76c893", "#52b69a", "#27375f", "#34a0a4", "#1a759f", "#1e6091", "#3c5488"]
-    random.seed(43)
-    # Shuffle only positions of markers and colors
-    random.shuffle(markers_biotic)
-    random.shuffle(colors_biotic)
+    # markers_biotic = [Hollow_Plus_marker, leaf_marker, pentagon_marker, hollow_circle, diamond, triangle_marker, 'x',star_marker,'+',hollow_square]
+    markers_biotic = [hollow_square]*10
+    
+    # Shuffle the markers and colors with seed
+    # random.seed(102)
+    # random.shuffle(colors_biotic)
 
-    markers_abiotic = ['v','^','<','>','1','s','p','D']
-    colors_abiotic = ["#ff6655", "#e64b35", "#d6452e", "#cc4130", "#b33a28", "#993322", "#803020", "#ff5e4d", "#e6594c", "#d1564b"]
-    random.shuffle(markers_abiotic)
-    random.shuffle(colors_abiotic)
+    # colors_biotic = ["#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000"]
+
+    markers_abiotic = [triangle_marker]*8
 
     if label == 'biotic':
         markers = markers_biotic
@@ -457,25 +496,34 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
     for i, sample in enumerate(selected_samples):
         sample_df = peaks_features_df[(peaks_features_df['sample'] == sample)]
         label = samples[samples['csv_file_name'] == sample]['label'].values[0]
+        sample_name = samples[samples['csv_file_name'] == sample].iloc[0]['sample_name']
+
         ax.scatter(
             sample_df['RT2'],
             sample_df['RT1'],
             sample_df['m/z'],
             c=colors[i % len(colors)],
             marker=markers[i % len(markers)],
-            s=sample_df['point_size'],
+            s=600,
             alpha=1,
-            edgecolors='w',
-            label=sample
+            # edgecolors='w',
+            label=sample_name
         )
 
+
     # Adding labels and title
-    ax.set_xlabel('2nd Time (s)', labelpad=20)
-    ax.set_ylabel('1st Time (min)', labelpad=20)
-    ax.set_zlabel('m/z', labelpad=20)
+    ax.set_xlabel('2nd Time (s)', labelpad=30)
+    ax.set_ylabel('1st Time (min)', labelpad=30)
+    ax.set_zlabel('m/z', labelpad=30)
 
     # Set tick font size
     ax.tick_params(axis='both', which='major', labelsize=20)
+    # Increase the space between tick labels and the axes
+    ax.tick_params(axis='x', which='major', pad=15)
+    ax.tick_params(axis='y', which='major', pad=15)
+    ax.tick_params(axis='z', which='major', pad=15)
+
+    
 
     if view == 'small':
         ax.set_box_aspect([2.5, 4, 2])
@@ -490,7 +538,7 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
     plt.tight_layout()
 
     ax.set_xlim(peaks_features_df['RT2'].min(), 3.5)
-    ax.set_ylim(peaks_features_df['RT1'].min()-3, 190)
+    ax.set_ylim(40, 190)
     ax.set_zlim(peaks_features_df['m/z'].min(), 680)
 
     # Background color
@@ -498,9 +546,9 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
     plt.gca().set_facecolor('white')
 
     # Change the color of the gridlines
-    ax.xaxis._axinfo['grid'].update(color = 'gray', linestyle = '-' , linewidth=0.5)
-    ax.yaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
-    ax.zaxis._axinfo['grid'].update(color = 'gray', linestyle = '-', linewidth=0.5)
+    ax.xaxis._axinfo['grid'].update(color = '#dcdcdc', linestyle = '-' , linewidth=0.5)
+    ax.yaxis._axinfo['grid'].update(color = '#dcdcdc', linestyle = '-', linewidth=0.5)
+    ax.zaxis._axinfo['grid'].update(color = '#dcdcdc', linestyle = '-', linewidth=0.5)
 
     # Make the edges of the plot black
     ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -508,7 +556,10 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
     ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
     # Add legend at the bottom of the plot
-    ax.legend(loc='lower center', bbox_to_anchor=(0.5, 0), ncol=2)
+    if label == 'biotic':
+        ax.legend(handletextpad=1, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=1, frameon=False, ncols=2)
+    else:
+        ax.legend(handletextpad=1, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=1, frameon=False, ncols=2)
 
     # Adjust layout to make room for the legend
     # Adjust layout to make room for the legend
@@ -517,24 +568,31 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
     plt.savefig(os.path.join(result_dir, f'Peaks_3d_{label}.pdf'), format='pdf')
     plt.close()
 
-
-def plot_distribution_of_peaks(peaks_features_df, result_dir):
+def plot_distribution_of_peaks(peaks_features_df, result_dir, x_axis = 'm/z'):
+    peaks_features_df = peaks_features_df.copy()
+    peaks_features_df['RT1'] = (peaks_features_df['RT1'] / 60)
     # Define the color palette
-    palette = ['#3c5488', '#e64b35']
+    palette = ['#e64b35','#3c5488']
 
     # Define the number of bins and calculate the bin edges
-    bin_count = 12
-    bin_edges = np.linspace(30, 700, bin_count+1)
+    if x_axis == 'm/z':
+        bin_edges = [0, 50,100,150,200,250,300,350,400,450,500,550,600,650,700]
+
+    elif x_axis == 'RT1':
+        bin_edges = [40,50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
+    elif x_axis == 'RT2':
+        bin_edges = [1,1.125,1.25,1.375,1.5,1.625,1.75,1.875,2,2.125,2.25,2.375,2.5,2.625,2.75]
 
     # Create a figure and axis with specified size
-    fig, ax = plt.subplots(figsize=(3, 2))
+    fig, ax = plt.subplots(figsize=(4, 3))
 
     # Remove the top and right borders
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
     # Create the histogram plot
-    sns.histplot(data=peaks_features_df, x="m/z", hue="class", palette=palette, alpha=0.85, bins=bin_edges)
+    sns.histplot(data=peaks_features_df, x=x_axis, hue="class", palette=palette, alpha=0.85, bins=bin_edges)
+
 
     # Set the x-axis label
     # ax.set_xlabel('m/z', fontsize=12)
@@ -545,12 +603,17 @@ def plot_distribution_of_peaks(peaks_features_df, result_dir):
     # ax.set_ylabel('# Peaks', fontsize=12)
 
     # Customizing x-axis tick labels to show bin ranges
-    tick_labels = [f'{int(bin_edges[i])}-{int(bin_edges[i+1])}' for i in range(len(bin_edges)-1)]
+    tick_labels = [f'{bin_edges[i]}-{bin_edges[i+1]}' for i in range(len(bin_edges)-1)]
     ax.set_xticks([(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(bin_edges)-1)])
     ax.set_xticklabels(tick_labels, rotation=90, fontsize=12)
 
     # Limit the x-axis and y-axis range
-    ax.set_xlim(30, 700)
+    if x_axis == 'm/z':
+        ax.set_xlim(0, 700)
+    elif x_axis == 'RT1':
+        ax.set_xlim(40, 180)
+    else:
+        ax.set_xlim(1, 2.75)
     ax.set_ylim(0, None)  # 'None' lets the upper limit be determined automatically
 
     # Set the background color
@@ -568,8 +631,12 @@ def plot_distribution_of_peaks(peaks_features_df, result_dir):
     # remove legend
     ax.get_legend().remove()
 
-    # Save the pdf file
-    plt.savefig(os.path.join(result_dir,'distribution_of_peaks.pdf'), format='pdf', bbox_inches='tight',dpi=400)
+    if x_axis == 'm/z':
+        plt.savefig(os.path.join(result_dir,'distribution_of_peaks_mz.pdf'), format='pdf', bbox_inches='tight',dpi=400)
+    elif x_axis == 'RT1':
+        plt.savefig(os.path.join(result_dir,'distribution_of_peaks_RT1.pdf'), format='pdf', bbox_inches='tight',dpi=400)
+    else:
+        plt.savefig(os.path.join(result_dir,'distribution_of_peaks_RT2.pdf'), format='pdf', bbox_inches='tight',dpi=400)
 
     # Show the plot
     plt.show()

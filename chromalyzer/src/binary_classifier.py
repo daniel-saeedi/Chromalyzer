@@ -14,6 +14,7 @@ import joblib
 from statsmodels.sandbox.stats.multicomp import multipletests
 
 import statsmodels.api as sm
+from scipy import stats
 
 
 def binary_class_signatures(coefficients_pvalues, features_info, results_path,samples,X_train, csv_file_name_column):
@@ -55,8 +56,6 @@ def binary_class_signatures(coefficients_pvalues, features_info, results_path,sa
 
     return signatures_class0, signatures_class1
 
-
-
 def is_point_inside_rect(rectangle, point):
     x1 = rectangle[0]
     y1 = rectangle[1]
@@ -96,6 +95,46 @@ def get_peaks_feature_df(signaturs_combined,peaks_path):
     num_clusters = peaks_features_df['feature_id'].max()
 
     return peaks_features_df, num_clusters
+
+def mann_whitney_u_test_mz(peaks_features_df):
+    biotic_peaks = peaks_features_df[peaks_features_df['class'] == '1']['m/z'].to_numpy()
+    abiotic_peaks = peaks_features_df[peaks_features_df['class'] == '0']['m/z'].to_numpy()
+
+    statistic, p_value = stats.mannwhitneyu(abiotic_peaks, biotic_peaks, alternative='less')
+
+    logger.info(f'Mann Whitney U test for m/z p-value: {p_value}')
+
+    if p_value < 0.05:
+        logger.info("Reject null hypothesis: Abiotic peak distribution for m/z is significantly lower than biotic")
+    else:
+        logger.info("Fail to reject null hypothesis: Abiotic peak distribution for m/z is not significantly lower than biotic")
+
+def mann_whitney_u_test_rt1(peaks_features_df):
+    biotic_peaks = peaks_features_df[peaks_features_df['class'] == '1']['RT1'].to_numpy()
+    abiotic_peaks = peaks_features_df[peaks_features_df['class'] == '0']['RT1'].to_numpy()
+
+    statistic, p_value = stats.mannwhitneyu(abiotic_peaks, biotic_peaks, alternative='less')
+
+    logger.info(f'Mann Whitney U test for RT1 p-value: {p_value}')
+
+    if p_value < 0.05:
+        logger.info("Reject null hypothesis: Abiotic peak distribution for RT1 is significantly lower than biotic")
+    else:
+        logger.info("Fail to reject null hypothesis: Abiotic peak distribution for RT1 is not significantly lower than biotic")
+
+def mann_whitney_u_test_rt2(peaks_features_df):
+    biotic_peaks = peaks_features_df[peaks_features_df['class'] == '1']['RT2'].to_numpy()
+    abiotic_peaks = peaks_features_df[peaks_features_df['class'] == '0']['RT2'].to_numpy()
+
+    statistic, p_value = stats.mannwhitneyu(biotic_peaks, abiotic_peaks, alternative='less')
+
+    logger.info(f'Mann Whitney U test for RT2 p-value: {p_value}')
+
+    if p_value < 0.05:
+        logger.info("Reject null hypothesis: Biotic peak distribution for RT2 is significantly lower than abiotic")
+    else:
+        logger.info("Fail to reject null hypothesis: Biotic peak distribution for RT2 is not significantly lower than abiotic")
+    
 
 def binary_classifier(args):
     log_path = os.path.join(args['results_dir'], 'results.log')
@@ -156,12 +195,13 @@ def binary_classifier(args):
 
     # Plotting top 10 highest to lowest coefficients
     top_featurs_path = os.path.join(args['results_dir'] ,'top_features/')
-    create_folder_if_not_exists(top_featurs_path)
-    plot_top_coefficients(coefficients, top_featurs_path)
-    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
     signaturs_combined = pd.concat([signatures_class0,signatures_class1]).sort_values(by='coefficient',key=abs,ascending=False).reset_index(drop=True)
     signaturs_combined.index = signaturs_combined.index + 1
     signaturs_combined.head(20).to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
+    create_folder_if_not_exists(top_featurs_path)
+    plot_top_coefficients(signaturs_combined.head(20),coefficients, top_featurs_path)
+    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
+    
     logger.info('Top 10 signatures plotted in top_coefficients folder.')
 
     # Plotting PCA
@@ -174,11 +214,11 @@ def binary_classifier(args):
 
     logger.info('2D plot of peaks and signatures saved.')
     # Plotting 3D plot of peaks (png)
-    plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'biotic',view = 'large')
-    plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'abiotic', view = 'large')
+    plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'biotic',view = 'small')
+    plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'abiotic', view = 'small')
 
     # Plotting 3D plot of signatures (png)
-    plot_3d_signatures(signaturs_combined, args['results_dir'],view = 'large')
+    plot_3d_signatures(signaturs_combined, args['results_dir'],view = 'small')
     logger.info('3D plot of signatures (png) saved.')
 
     # interactive 3D plot for peaks
@@ -190,5 +230,12 @@ def binary_classifier(args):
     logger.info('3D interactive plot of signatures saved.')
 
     # Distribution of peaks across m/z values
-    plot_distribution_of_peaks(peaks_features_df, args['results_dir'])
+    plot_distribution_of_peaks(peaks_features_df, args['results_dir'], x_axis='m/z')
+    plot_distribution_of_peaks(peaks_features_df, args['results_dir'], x_axis='RT1')
+    plot_distribution_of_peaks(peaks_features_df, args['results_dir'], x_axis='RT2')
+
+    mann_whitney_u_test_mz(peaks_features_df)
+    mann_whitney_u_test_rt1(peaks_features_df)
+    mann_whitney_u_test_rt2(peaks_features_df)
+
     logger.info('Distribution of peaks across m/z values saved.')

@@ -27,26 +27,26 @@ config = {
     #     "rt2_threshold": range(5,300,5)
     # },
 
-    "model": "xgboost",
-    "xgboost": {
-        "n_estimators": [20, 50, 100, 200, 500],
+    # "model": "xgboost",
+    # "xgboost": {
+    #     "n_estimators": [20, 50, 100, 200, 500],
+    #     "seed": 42,
+    #     "lambda1": [0.75],
+    #     "lambda2": [5.0],
+    #     "rt1_threshold": [10],
+    #     "rt2_threshold": range(20,120,20)
+    # }
+
+
+    "model": "lr_l2",
+    "lr_l2": {
+        "C": [1e-4,1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3,1e+4],
         "seed": 42,
         "lambda1": [0.75],
         "lambda2": [5.0],
         "rt1_threshold": [10],
-        "rt2_threshold": range(20,120,20)
+        "rt2_threshold": range(5,300,5)
     }
-
-
-    # "model": "lr_l2",
-    # "lr_l2": {
-        # "C": [1e-4,1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3,1e+4],
-        # "seed": 42,
-        # "lambda1": [0.75],
-        # "lambda2": [5.0],
-        # "rt1_threshold": [10],
-        # "rt2_threshold": range(5,300,5)
-    # }
 
     # "model": 'NaiveBayes',
     # "NaiveBayes": {
