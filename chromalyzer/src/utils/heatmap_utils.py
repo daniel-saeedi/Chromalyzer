@@ -50,6 +50,9 @@ def load_headmaps_list(path_to_heatmaps, samples, m_z):
 
 # Plot the heatmap
 def plt_heatmap(path, ht_df, t1_start=0, t1_end=0, t2_start=0, t2_end=0, full_spectrum=False, cluster_rectangles=None, title='', save=False, round_num = True,small = False):
+    # if ht_df is empty, return
+    if ht_df.empty:
+        return
     plt.rcParams.update({'font.size': 14, 'axes.labelsize': 14, 'axes.titlesize': 14,
                          'xtick.labelsize': 14, 'ytick.labelsize': 14, 'legend.fontsize': 14})
     # Create a custom colormap with the specified hex colors

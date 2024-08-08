@@ -18,10 +18,10 @@ config = {
     "C": 0.01,
     "seed": 42,
     "number_of_bootstraps": 1000,
-    "lambda1": 0.75,
-    "lambda2": 5.0,
+    "lambda1": 0.4,
+    "lambda2": 3.0,
     "rt1_threshold": 10,
-    "rt2_threshold": 100,
+    "rt2_threshold": 105,
 }
 
 chromalyzer.binary_classifier.binary_classifier(config)

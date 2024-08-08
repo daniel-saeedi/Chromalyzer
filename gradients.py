@@ -97,7 +97,7 @@ features = abiotic_peaks_normalized.copy()
 
 time_steps = 10000
 for t in range(time_steps):
-    # Compute gradient and move in that direction
+    # Compute gradient and move in that directionR
     gradients = parallel_gradient_calculation(features, biotic_peaks_normalized, best_bandwidth)
 
     # Prevent exploding gradients due to approximation error
@@ -118,4 +118,4 @@ for t in range(time_steps):
 
 # Save gradients_at_time_t
 np.save('gradients_at_time_t.npy', np.array(gradients_at_time_t) )
-np.save('points_at_time_t.npy', np.array(points_at_time_t) )
+np.save('points_at_time_t.npy', np.array(points_at_time_t) )        

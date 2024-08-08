@@ -105,7 +105,7 @@ def retention_times_alignment_process(params,peaks_dir_path,samples_name_list,mz
     for param in params:
         lam1 = param[0]
         lam2 = param[1]
-        rt1_threshold,rt2_threshold = param[2],param[3]
+        rt1_threshold,rt2_threshold = int(param[2]),int(param[3])
 
         peaks_path = os.path.join(peaks_dir_path, f'peaks_lambda1_{lam1}/', f'lam2_{lam2}/')
         rta = RetentionTimesAlignment(samples_name_list, mz_list, peaks_path, features_out_path, rt1_threshold, rt2_threshold)

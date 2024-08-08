@@ -18,6 +18,13 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 from svgpathtools import svg2paths
 from svgpath2mpl import parse_path
+import matplotlib.font_manager as fm
+
+font_path = '/usr/scratch/dtsui/Helvetica.ttf'
+font_prop = fm.FontProperties(fname=font_path)
+fm.fontManager.addfont(font_path)
+font_name = font_prop.get_name()
+plt.rcParams['font.family'] = font_name
 
 colors_biotic = ["#143c55", "#366ea5", "#5aa5d7", "#a0877d","#c3e1e6", "#6db4be", "#c3c378", "#9bbe87", "#279b91", "#9be1af"]
 # Shuffle the colors with seed
@@ -36,29 +43,27 @@ def get_feature_name(i, signature_info):
 
 
 def plot_top_coefficients(signatures_info, coefficients_pvalues, results_dir, top_n=20):
-    # Get the top 30 feature importances
+
+    # Get the top 'n' feature importances
     top_features = coefficients_pvalues[:top_n]
 
     # Extract the importance values and feature names
-    coeffs = [coeff for _, coeff in top_features]
+    coeffs = [abs(coeff) for _, coeff in top_features]  # Use absolute for bar length
     feature_ids = [i for i in range(0, top_n)]
     features_names = [get_feature_name(i, signatures_info.iloc[i]) for i in range(0, top_n)]
 
-    # Plot the feature importances
-    plt.figure(figsize=(5, 3))  # Increased figure size
-    bars = plt.bar(feature_ids, [abs(c) for c in coeffs], color=['#ff3333' if c < 0 else '#3c5488' for c in coeffs])
+    # reverse the order of the top features
+    coeffs = coeffs[::-1]
+    features_names = features_names[::-1]
+    top_features = top_features[::-1]
 
-    # Add feature names as labels above the bars
-    # for bar, feature_name in zip(bars, features_names):
-    #     height = bar.get_height()
-    #     plt.text(bar.get_x() + bar.get_width(), height, feature_name, ha='center', va='bottom', rotation=45, fontsize=8)
+    # Plot the feature importances horizontally
+    plt.figure(figsize=(2, 4))  # Adjusted figure size for better display
+    bars = plt.barh(feature_ids, coeffs, color=['#ff3333' if coeff < 0 else '#3c5488' for _, coeff in top_features])
 
-    plt.xticks(feature_ids, features_names, rotation=45, ha='right', fontsize=8)
-
-    plt.xlabel('Feature')
-    plt.ylabel('Coefficient')
-
-    plt.xlim(-0.5, len(feature_ids) - 0.5)
+    plt.yticks(feature_ids, features_names, fontsize=8)
+    plt.ylabel('Feature')
+    plt.xlabel('Coefficient')
 
     # Add border lines to left and bottom
     plt.gca().spines['left'].set_color('black')
@@ -69,12 +74,12 @@ def plot_top_coefficients(signatures_info, coefficients_pvalues, results_dir, to
     # Remove the background
     plt.gca().set_facecolor('white')
 
-
     # Display the plot
     plt.show()
 
     # Save the plot to a file
     plt.savefig(os.path.join(results_dir, f'top_{top_n}_coefficient.pdf'), format='pdf', bbox_inches='tight', dpi=300)
+
 
 def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n=20):
     X_selected = X_train[:, coefficients[:top_n,0].astype(int)]
@@ -84,16 +89,12 @@ def plot_top_features(X_train, coefficients, train_samples, results_dir, label_c
     class_0_count = np.sum(train_samples[label_column_name] == 0)
     X_sorted[class_0_count:,:] = np.where(X_sorted[class_0_count:,:] == 1, 2, X_sorted[class_0_count:,:])
 
-
     # plt.figure(figsize=(16,12))
     sns.set(font_scale=1.4)
 
     # Define colors for each value
     colors = ["white", "#000", "#000"]  # Colors for 0, 1, and 2 respectively
     cmap = mcolors.ListedColormap(colors)
-
-    boundaries = [-0.5, 0.5, 1.5, 2.5]
-    norm = mcolors.BoundaryNorm(boundaries, cmap.N, clip=True)
 
     sns.heatmap(X_sorted.T, cmap=cmap, yticklabels=range(1,top_n+1), xticklabels=train_samples.sort_values(label_column_name)[csv_file_name_column].to_numpy() ,cbar=False, linecolor='gray', linewidth=0.5,square=True)
     # Save the plot as a PDF file
@@ -117,7 +118,7 @@ def plot_pca(features, labels, samples_name ,coefficients_pvalues, results_dir, 
     pca = PCA(n_components=2)
     pca.fit(X_selected)
     X_embedded = pca.transform(X_selected)
-    plt.figure(figsize=(7, 3))
+    plt.figure(figsize=(4, 3))
 
     ax = plt.gca()  # Get current axis
     ax.spines['top'].set_visible(False)
@@ -376,9 +377,9 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
 
 
-    ax.set_xlim(all_signatures['RT2_center'].min(), 3.5)
-    ax.set_ylim(40, 190)
-    ax.set_zlim(all_signatures['m/z'].min(),680)
+    ax.set_xlim(1, 3)
+    ax.set_ylim(60, 180)
+    ax.set_zlim(0, 500)
 
     # Background color
     plt.gcf().set_facecolor('white')
@@ -537,9 +538,9 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
         ax.view_init(elev=20, azim=-179)
     plt.tight_layout()
 
-    ax.set_xlim(peaks_features_df['RT2'].min(), 3.5)
-    ax.set_ylim(40, 190)
-    ax.set_zlim(peaks_features_df['m/z'].min(), 680)
+    ax.set_xlim(1, 3)
+    ax.set_ylim(60, 180)
+    ax.set_zlim(0, 500)
 
     # Background color
     plt.gcf().set_facecolor('white')
@@ -573,15 +574,15 @@ def plot_distribution_of_peaks(peaks_features_df, result_dir, x_axis = 'm/z'):
     peaks_features_df['RT1'] = (peaks_features_df['RT1'] / 60)
     # Define the color palette
     palette = ['#e64b35','#3c5488']
+    # palette = ['#f8951f','#35b548']
 
     # Define the number of bins and calculate the bin edges
     if x_axis == 'm/z':
-        bin_edges = [0, 50,100,150,200,250,300,350,400,450,500,550,600,650,700]
-
+        bin_edges = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700]
     elif x_axis == 'RT1':
-        bin_edges = [40,50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
+        bin_edges = [40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
     elif x_axis == 'RT2':
-        bin_edges = [1,1.125,1.25,1.375,1.5,1.625,1.75,1.875,2,2.125,2.25,2.375,2.5,2.625,2.75]
+        bin_edges = [1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75]
 
     # Create a figure and axis with specified size
     fig, ax = plt.subplots(figsize=(4, 3))
@@ -593,50 +594,50 @@ def plot_distribution_of_peaks(peaks_features_df, result_dir, x_axis = 'm/z'):
     # Create the histogram plot
     sns.histplot(data=peaks_features_df, x=x_axis, hue="class", palette=palette, alpha=0.85, bins=bin_edges)
 
-
-    # Set the x-axis label
-    # ax.set_xlabel('m/z', fontsize=12)
-    ax.set_xlabel('')
-    ax.set_ylabel('')
-
-    # Set the y-axis label
-    # ax.set_ylabel('# Peaks', fontsize=12)
-
-    # Customizing x-axis tick labels to show bin ranges
+    # Customizing x-axis tick labels to show fewer labels
     tick_labels = [f'{bin_edges[i]}-{bin_edges[i+1]}' for i in range(len(bin_edges)-1)]
     ax.set_xticks([(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(bin_edges)-1)])
-    ax.set_xticklabels(tick_labels, rotation=90, fontsize=12)
+
+    # Show only every 2nd label
+    reduced_tick_labels = [tick_labels[i] if i % 2 == 0 else '' for i in range(len(tick_labels))]
+    ax.set_xticklabels(reduced_tick_labels, rotation=90, fontsize=12)
 
     # Limit the x-axis and y-axis range
     if x_axis == 'm/z':
         ax.set_xlim(0, 700)
+        ax.set_xlabel('m/z', fontsize=12)
     elif x_axis == 'RT1':
         ax.set_xlim(40, 180)
+        ax.set_xlabel('1st Time (min)', fontsize=12)
     else:
         ax.set_xlim(1, 2.75)
-    ax.set_ylim(0, None)  # 'None' lets the upper limit be determined automatically
+        ax.set_xlabel('2nd Time (s)', fontsize=12)
+    
+    ax.set_ylabel('Frequency', fontsize=12)
+    ax.set_ylim(0, None)
 
     # Set the background color
     fig.set_facecolor('white')
     ax.set_facecolor('white')
 
-    # remove grid lines
+    # Remove grid lines
     ax.grid(False)
 
+    # Adjust spines
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_edgecolor('black')
     ax.spines['bottom'].set_edgecolor('black')
 
-    # remove legend
+    # Remove legend
     ax.get_legend().remove()
 
     if x_axis == 'm/z':
-        plt.savefig(os.path.join(result_dir,'distribution_of_peaks_mz.pdf'), format='pdf', bbox_inches='tight',dpi=400)
+        plt.savefig(os.path.join(result_dir, 'distribution_of_peaks_mz.pdf'), format='pdf', bbox_inches='tight', dpi=400)
     elif x_axis == 'RT1':
-        plt.savefig(os.path.join(result_dir,'distribution_of_peaks_RT1.pdf'), format='pdf', bbox_inches='tight',dpi=400)
+        plt.savefig(os.path.join(result_dir, 'distribution_of_peaks_RT1.pdf'), format='pdf', bbox_inches='tight', dpi=400)
     else:
-        plt.savefig(os.path.join(result_dir,'distribution_of_peaks_RT2.pdf'), format='pdf', bbox_inches='tight',dpi=400)
+        plt.savefig(os.path.join(result_dir, 'distribution_of_peaks_RT2.pdf'), format='pdf', bbox_inches='tight', dpi=400)
 
     # Show the plot
     plt.show()
