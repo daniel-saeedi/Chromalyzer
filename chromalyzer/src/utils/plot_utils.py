@@ -282,9 +282,10 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
     if view == 'small':
         legend_sizes = [3000,
+                        2500,
                         1500,
-                        750,
-                        355,
+                        1000,
+                        500,
                         150]
     else:
         legend_sizes = [5000,
@@ -296,16 +297,18 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     all_signatures['point_size'] = 0
     for idx, row in all_signatures.iterrows():
 
-        if row['coefficient_abs'] >= 0.02:
+        if row['coefficient_abs'] >= 0.10:
             all_signatures.at[idx, 'point_size'] = legend_sizes[0]
-        elif row['coefficient_abs'] >= 0.015:
+        elif row['coefficient_abs'] >= 0.08:
             all_signatures.at[idx, 'point_size'] = legend_sizes[1]
-        elif row['coefficient_abs'] >= 0.01:
+        elif row['coefficient_abs'] >= 0.06:
             all_signatures.at[idx, 'point_size'] = legend_sizes[2]
-        elif row['coefficient_abs'] >= 0.005:
+        elif row['coefficient_abs'] >= 0.04:
             all_signatures.at[idx, 'point_size'] = legend_sizes[3]
-        else:
+        elif row['coefficient_abs'] >= 0.02:
             all_signatures.at[idx, 'point_size'] = legend_sizes[4]
+        else:
+            all_signatures.at[idx, 'point_size'] = legend_sizes[5]
 
     all_signatures = all_signatures.sort_values(by='point_size', ascending=False)
 
@@ -366,7 +369,7 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
     # Create legend handles
     legend_handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=np.sqrt(s), label=label)
-                  for s, label in zip(legend_sizes, ['> 0.02', '0.015 - 0.02', '0.01 - 0.015', '0.005 - 0.01', '< 0.005'])]
+                  for s, label in zip(legend_sizes, ['>= 0.10', '0.08 - 0.10', '0.06 - 0.08', '0.04 - 0.06', '0.02 - 0.04', ' < 0.02'])]
 
     # Add the legend to the plot
     legend1 = ax.legend(handles=legend_handles, handletextpad=2.5, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=4, frameon=False, ncol=2)
@@ -376,10 +379,10 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
           fontsize='12', title_fontsize='14', handlelength=2, loc='upper left', borderpad=1.2, labelspacing=1.5, frameon=False)
 
 
+    ax.set_xlim(0.5, 3.5)
+    ax.set_ylim(35, 190)
+    ax.set_zlim(30,500)
 
-    ax.set_xlim(1, 3)
-    ax.set_ylim(60, 180)
-    ax.set_zlim(0, 500)
 
     # Background color
     plt.gcf().set_facecolor('white')
@@ -538,9 +541,9 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
         ax.view_init(elev=20, azim=-179)
     plt.tight_layout()
 
-    ax.set_xlim(1, 3)
-    ax.set_ylim(60, 180)
-    ax.set_zlim(0, 500)
+    ax.set_xlim(0.2, 3.5)
+    ax.set_ylim(35, 190)
+    ax.set_zlim(30,500)
 
     # Background color
     plt.gcf().set_facecolor('white')

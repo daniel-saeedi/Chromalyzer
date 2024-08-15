@@ -11,9 +11,9 @@ config = {
     "csv_file_name_column": "csv_file_name",
     "label_column_name": "label",
 
-    "features_path": "/usr/scratch/chromalyzer/features/",
-    "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
-    "eval_path":"/usr/scratch/chromalyzer/eval_path/lr_l2/",
+    "features_path": "/usr/scratch/chromalyzer/test/features/",
+    "peaks_dir_path": "/usr/scratch/chromalyzer/test/peaks/",
+    "eval_path":"/usr/scratch/chromalyzer/test/eval_path/rf/",
 
 
     # "model": "svm",
@@ -21,10 +21,10 @@ config = {
     #     "C": [1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3],
     #     "kernel": ["linear","poly","rbf","sigmoid"],
     #     "seed": 42,
-    #     "lambda1": [0.75],
-    #     "lambda2": [5.0],
+        # "lambda1": [0.4],
+        # "lambda2": [2.0],
     #     "rt1_threshold": [10],
-    #     "rt2_threshold": range(5,300,5)
+    #     "rt2_threshold": range(5,125,5)
     # },
 
     # "model": "xgboost",
@@ -35,29 +35,38 @@ config = {
     #     "lambda2": [5.0],
     #     "rt1_threshold": [10],
     #     "rt2_threshold": range(20,120,20)
-    # }
+    # },
 
-    "model": "lr_l2",
-    "lr_l2": {
-        "C": [1e-4,1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3,1e+4],
+    "model": "rf",
+    "rf": {
+        "n_estimators": [20, 50, 100, 200, 500],
         "seed": 42,
         "lambda1": [0.4],
-        "lambda2": [3.0],
+        "lambda2": [2.0],
         "rt1_threshold": [10],
         "rt2_threshold": range(5,125,5)
     }
+
+    # "model": "lr_l1",
+    # "lr_l1": {
+    #     "C": [1e-4,1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3,1e+4],
+    #     "seed": 42,
+        # "lambda1": [0.4],
+        # "lambda2": [2.0],
+    #     "rt1_threshold": [10],
+    #     "rt2_threshold": range(5,125,5)
+    # }
 
 
     # "model": 'NaiveBayes',
     # "NaiveBayes": {
     #     "alpha": [0.01, 0.1, 0.5, 1, 5, 10],
     #     "seed": 42,
-    #     "lambda1": [0.75],
-    #     "lambda2": [5.0],
+        # "lambda1": [0.4],
+        # "lambda2": [2.0],
     #     "rt1_threshold": [10],
-    #     "rt2_threshold": range(5,300,5)
+    #     "rt2_threshold": range(5,125,5)
     # }
-    
 }
 
 chromalyzer.evaluation.eval(config)

@@ -136,6 +136,23 @@ def mann_whitney_u_test_rt2(peaks_features_df):
         logger.info("Fail to reject null hypothesis-> Abiotic peak distribution for RT2 is not significantly higher than biotic")
     
 
+def fragment_finder(df,path):
+    df = df.copy()
+    df['RT1_Center'] = df['RT1'].apply(lambda x: sum(eval(x))/2)
+    df['RT2_Center'] = df['RT2'].apply(lambda x: sum(eval(x))/2)
+    i = 1
+    for idx, row in df.iterrows():
+        
+        rt1 = row['RT1_Center']
+        rt2 = row['RT2_Center']
+        path_to_save = os.path.join(path, f'rank_{i}.csv')
+        
+        fragments = df[(df['RT1_Center'] > rt1 - 15) & (df['RT1_Center'] < rt1 + 15) & (df['RT2_Center'] > rt2 - 0.8) & (df['RT2_Center'] < rt2 + 0.8)]
+        if len(fragments) != 0:
+            pd.DataFrame(fragments).to_csv(path_to_save)
+            i += 1
+            df = df.drop(fragments.index)
+
 def binary_classifier(args):
     log_path = os.path.join(args['results_dir'], 'results.log')
     logger.add(log_path, rotation="10 MB")
@@ -199,9 +216,12 @@ def binary_classifier(args):
 
     signaturs_combined = pd.concat([signatures_class0,signatures_class1]).sort_values(by='coefficient',key=abs,ascending=False).reset_index(drop=True)
     signaturs_combined.index = signaturs_combined.index + 1
-    signaturs_combined.head(20).to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
+    signaturs_combined.to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
+
+    create_folder_if_not_exists(os.path.join(args['results_dir'],'fragments'))
+    fragment_finder(signaturs_combined, os.path.join(args['results_dir'],'fragments'))
     
-    plot_top_coefficients(signaturs_combined.head(20),coefficients, top_featurs_path)
+    plot_top_coefficients(signaturs_combined.head(100),coefficients, top_featurs_path)
     plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
     
     logger.info('Top 10 signatures plotted in top_coefficients folder.')
@@ -214,13 +234,13 @@ def binary_classifier(args):
     peaks_features_df, num_clusters = get_peaks_feature_df(signaturs_combined,os.path.join(args['peaks_dir_path'], f'peaks_lambda1_{lam1}/',f'lam2_{lam2}/'))
     plot_2d_features(signaturs_combined, peaks_features_df, num_clusters, args['results_dir'])
 
-    logger.info('2D plot of peaks and signatures saved.')
+    # logger.info('2D plot of peaks and signatures saved.')
     # Plotting 3D plot of peaks (png)
     plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'biotic',view = 'small')
     plot_3d_peaks(peaks_features_df, samples,args['results_dir'], label = 'abiotic', view = 'small')
 
     # Plotting 3D plot of signatures (png)
-    plot_3d_signatures(signaturs_combined.loc[12:18], args['results_dir'],view = 'small')
+    plot_3d_signatures(signaturs_combined, args['results_dir'],view = 'small')
     logger.info('3D plot of signatures (png) saved.')
 
     # interactive 3D plot for peaks
@@ -239,4 +259,4 @@ def binary_classifier(args):
 
     mann_whitney_u_test_mz(peaks_features_df)
     mann_whitney_u_test_rt1(peaks_features_df)
-    # mann_whitney_u_test_rt2(peaks_features_df)
+    mann_whitney_u_test_rt2(peaks_features_df)

@@ -23,7 +23,7 @@ config = {
     "csv_file_name_column": "csv_file_name",
     
     # What m/z value to plot
-    "m_z": "503"
+    "m_z": "325"
 }
 
 chromalyzer.plot_heatmap.plot_heatmap(config)

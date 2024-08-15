@@ -13,10 +13,10 @@ config = {
     "csv_file_name_column": "csv_file_name",
     "label_column_name": "label",
 
-    "features_path": "/usr/scratch/chromalyzer/features/",
-    "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
+    "features_path": "/usr/scratch/chromalyzer/test/features/",
+    "peaks_dir_path": "/usr/scratch/chromalyzer/test/peaks/",
     "lambda1": [0.4],
-    "lambda2": [3.0],
+    "lambda2": [2.0],
     "rt1_threshold": [10],
     "rt2_threshold": range(5,125,5),
     "rt1_time_step": 3.504,
