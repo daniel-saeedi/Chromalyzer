@@ -311,7 +311,7 @@ def calc_accuracy(config):
             test_id = f'{test_index}'
 
             rs = result[result['test_id'] == test_id]
-            rs = rs.sort_values(by=['val_acc',], ascending=[False]).reset_index(drop=True)
+            rs = rs.sort_values(by=['val_acc','rt2_threshold'], ascending=[False, True]).reset_index(drop=True)
 
             row_with_max_val_acc = rs.iloc[0]
 

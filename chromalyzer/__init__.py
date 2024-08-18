@@ -5,7 +5,8 @@ from .src import (
     plot_heatmap,
     binary_classifier,
     parameters_selection,
-    evaluation
+    evaluation,
+    TII_alignment,
 )
 
 __version__ = "1.0.0"

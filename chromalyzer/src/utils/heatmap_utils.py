@@ -29,18 +29,11 @@ def create_folder_if_not_exists(folder_path):
 
 # Loads the heatmap data from the numpy files
 def load_heatmap_data(heatmap_dir, m_z, sample):
-    first_time = np.load(os.path.join(heatmap_dir, sample, f'{m_z}_first_time.npy'))
-    second_time = np.load(os.path.join(heatmap_dir, sample, f'{m_z}_second_time.npy'))
+    first_time = np.load(os.path.join(heatmap_dir, f'first_time.npy'))
+    second_time = np.load(os.path.join(heatmap_dir, f'second_time.npy'))
     heatmap_2d = np.load(os.path.join(heatmap_dir, sample, f'{m_z}.npy'))
-
-    # # Zero-out values below 0.75 * max value (2d array)
-    # max_val = np.max(heatmap_2d)
-    # heatmap_2d[heatmap_2d < 1/2 * max_val] = 0
-
-    # Create DataFrame for heatmap
     ht_df = pd.DataFrame(heatmap_2d, index=second_time, columns=first_time)
     return ht_df
-
 def load_headmaps_list(path_to_heatmaps, samples, m_z):
     heatmaps = []
     for sample_name in samples:
@@ -72,7 +65,7 @@ def plt_heatmap(path, ht_df, t1_start=0, t1_end=0, t2_start=0, t2_end=0, full_sp
     # Generate the heatmap with the custom colormap
     
     if small:
-        plt.figure(figsize=(3, 2))
+        plt.figure(figsize=(5, 3))
     else:
         plt.figure(figsize=(20, 4))
     ax = sns.heatmap(ht_df, cmap=cmap, rasterized=True)

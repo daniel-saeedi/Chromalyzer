@@ -13,14 +13,13 @@ config = {
     "csv_file_name_column": "csv_file_name",
     "label_column_name": "label",
 
-    "features_path": "/usr/scratch/chromalyzer/test/features/",
-    "peaks_dir_path": "/usr/scratch/chromalyzer/test/peaks/",
+    "features_path": "/usr/scratch/chromalyzer/features/",
+    "output_dir_TII_aligned": "/usr/scratch/chromalyzer/TII_aligned/",
+    "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
     "lambda1": [0.4],
     "lambda2": [2.0],
-    "rt1_threshold": [10],
-    "rt2_threshold": range(5,125,5),
-    "rt1_time_step": 3.504,
-    "rt2_time_step": 0.008
+    "rt1_threshold": [10], # 10 * 3.504 = 35.04
+    "rt2_threshold": range(5,125,5), # 5*0.008 = 0.04 - 125*0.008 = 1
 }
 
 chromalyzer.retention_times_alignment.retention_times_alignment(config)

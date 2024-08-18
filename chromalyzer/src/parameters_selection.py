@@ -60,7 +60,7 @@ def parameters_selection(config):
             if prediction == y_val:
                 correct_val += 1
         
-        logger.info(f'Validation Accuracy: {correct_val/(sample_indices.shape[0])}, lam1 : {lam1}, lam2 : {lam2}, rt1_threshold = {rt1_th}, rt2_threshold = {rt2_th}, C: {C}')
+        logger.info(f'lr l2 - Validation Accuracy: {correct_val/(sample_indices.shape[0])}, lam1 : {lam1}, lam2 : {lam2}, rt1_threshold = {rt1_th}, rt2_threshold = {rt2_th}, C: {C}')
         
         log.append((C,lam1,lam2,rt1_th,rt2_th,correct_val/(sample_indices.shape[0])))
 

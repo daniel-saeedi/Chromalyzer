@@ -10,9 +10,9 @@ config = {
     "csv_file_name_column": "csv_file_name",
     "label_column_name": "label",
 
-    "features_path": "/usr/scratch/chromalyzer/test/features/",
-    "peaks_dir_path": "/usr/scratch/chromalyzer/test/peaks/",
-    "parameters_selection_path":"/usr/scratch/chromalyzer/test/parameters_selection/",
+    "features_path": "/usr/scratch/chromalyzer/features/",
+    "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
+    "parameters_selection_path":"/usr/scratch/chromalyzer/parameters_selection/",
 
     # Logistic Regression with L2 regularization
     "C": [1e-4,1e-3,1e-2,1e-1,1e0,1e+1,1e+2,1e+3,1e+4],

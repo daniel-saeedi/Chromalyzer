@@ -1,5 +1,5 @@
 import pandas as pd
-path_to_peaks = '/usr/scratch/chromalyzer/test/peaks/peaks_lambda1_0.4/lam2_2.0/'
+path_to_peaks = '/usr/scratch/chromalyzer/peaks/peaks_lambda1_0.4/lam2_2.0/'
 m_z_range = range(30, 701, 1)
 
 labels = pd.read_csv('/usr/scratch/danial_stuff/Chromalyzer/data/labels.csv')
@@ -14,4 +14,4 @@ for m_z in m_z_range:
     combined.append(merged_df)
 
 combined_df = pd.concat(combined, axis=0)
-combined_df.to_csv('/usr/scratch/chromalyzer/test/peaks/combined.csv', index=False)
+combined_df.to_csv('/usr/scratch/chromalyzer/peaks/combined.csv', index=False)

@@ -145,12 +145,15 @@ def extract_peaks_process(save_peaks_path, config,params):
     samples = pd.read_csv(config['labels_path'])
     samples_name = samples[config['csv_file_name_column']].tolist()
 
+    first_time_axis = np.load(os.path.join(config['output_dir_TII_aligned'], f'first_time.npy'))
+    second_time_axis = np.load(os.path.join(config['output_dir_TII_aligned'], f'second_time.npy'))
+    
     for param in params:
         lam1 = param[0]
         lam2 = param[1]
         m_z = int(param[2])
 
-        heatmaps = load_headmaps_list(config['output_dir_heatmap'],samples_name,m_z)
+        heatmaps = load_headmaps_list(config['output_dir_TII_aligned'],samples_name,m_z)
 
         df_peaks_list = []
         for idx, sample in enumerate(samples_name):
@@ -178,8 +181,6 @@ def extract_peaks_process(save_peaks_path, config,params):
 
             # Adding actual time values to the peaks instead of indices
             peaks_pairs = []
-            first_time_axis = np.load(os.path.join(config['output_dir_heatmap'], sample, f'{m_z}_first_time.npy'))
-            second_time_axis = np.load(os.path.join(config['output_dir_heatmap'], sample, f'{m_z}_second_time.npy'))
             # Filter the peaks based on the area
             for id, point in enumerate(cluster_centers):
                 intensity = rectanle_sum_area(heatmap_numpy,cluster_rectangles[id])
