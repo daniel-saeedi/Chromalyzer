@@ -28,6 +28,11 @@ def binary_class_signatures(coefficients_pvalues, features_info, results_path,sa
         second_time_start = features_info.iloc[index]['RT2_start']
         first_time_end = features_info.iloc[index]['RT1_end']
         second_time_end = features_info.iloc[index]['RT2_end']
+        RT1_center = features_info.iloc[index]['RT1_center']
+        RT2_center = features_info.iloc[index]['RT2_center']
+
+
+
 
         # What samples contain this signature?
         samples_with_this_sign = ''
@@ -41,15 +46,15 @@ def binary_class_signatures(coefficients_pvalues, features_info, results_path,sa
         cluster_label = int(values[np.argmax(counts)])
         if coefficient < 0:
             # Abiotic
-            signatures_class_0.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,cluster_label])
+            signatures_class_0.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,RT1_center,RT2_center, index, cluster_label])
         else:
             # Biotic
-            signatures_class_1.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,cluster_label])
+            signatures_class_1.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,RT1_center,RT2_center, index, cluster_label])
 
 
     create_folder_if_not_exists(os.path.join(results_path))
-    signatures_class0 = pd.DataFrame(signatures_class_0,columns=['coefficient','m/z','RT1','RT2','samples','class'])
-    signatures_class1 = pd.DataFrame(signatures_class_1,columns=['coefficient','m/z','RT1','RT2','samples','class'])
+    signatures_class0 = pd.DataFrame(signatures_class_0,columns=['coefficient','m/z','RT1','RT2','samples','RT1_center','RT2_center','feature_index','class'])
+    signatures_class1 = pd.DataFrame(signatures_class_1,columns=['coefficient','m/z','RT1','RT2','samples','RT1_center','RT2_center','feature_index','class'])
 
     signatures_class0.to_csv(os.path.join(results_path ,f'lr_l2_class0_signatures.csv'))
     signatures_class1.to_csv(os.path.join(results_path, f'lr_l2_class1_signatures.csv'))
@@ -136,22 +141,46 @@ def mann_whitney_u_test_rt2(peaks_features_df):
         logger.info("Fail to reject null hypothesis-> Abiotic peak distribution for RT2 is not significantly higher than biotic")
     
 
-def fragment_finder(df,path):
+# samples: separated by comma
+def replace_sample_name(samples, labels):
+    samples = samples.split(', ')
+    # remove the last empty string
+    samples = samples[:-1]
+    new_samples = []
+    for sample in samples:
+        new_samples.append(labels[labels['csv_file_name'] == sample]['sample_name'].iloc[0])
+    return ', '.join(new_samples)
+
+def fragment_finder(df,path, features_info, labels):
     df = df.copy()
-    df['RT1_Center'] = df['RT1'].apply(lambda x: sum(eval(x))/2)
-    df['RT2_Center'] = df['RT2'].apply(lambda x: sum(eval(x))/2)
+
     i = 1
-    for idx, row in df.iterrows():
-        
-        rt1 = row['RT1_Center']
-        rt2 = row['RT2_Center']
+    top_fragment_indices = []
+    frag_info = []
+    while len(df) != 0:
+        row = df.iloc[0]
+        rt1 = row['RT1_center']
+        rt2 = row['RT2_center']
+        index = row['feature_index']
+        m_z = int(row['m/z'])
         path_to_save = os.path.join(path, f'rank_{i}.csv')
-        
-        fragments = df[(df['RT1_Center'] > rt1 - 15) & (df['RT1_Center'] < rt1 + 15) & (df['RT2_Center'] > rt2 - 0.8) & (df['RT2_Center'] < rt2 + 0.8)]
+
+        fragments = df[(df['RT1_center'] > rt1 - 15) & (df['RT1_center'] < rt1 + 15) & (df['RT2_center'] > rt2 - 0.8) & (df['RT2_center'] < rt2 + 0.8)]
         if len(fragments) != 0:
             pd.DataFrame(fragments).to_csv(path_to_save)
             i += 1
             df = df.drop(fragments.index)
+            
+            top_fragment_indices.append((index, f'({m_z}, {rt1/60:.2f}, {rt2:.2f})'))
+
+            # replace the sample names with the sample names in the labels
+            fragments['samples'] = fragments['samples'].apply(lambda x: replace_sample_name(x, labels))
+            
+            frag_info.append(fragments.iloc[0])
+    
+    pd.DataFrame(frag_info).to_csv(os.path.join(path, 'fragments_info.csv'))
+    pd.DataFrame(top_fragment_indices, columns=['feature_index', 'm/z, RT1, RT2']).to_csv(os.path.join(path, 'top_fragments.csv'))
+    return np.array(top_fragment_indices)
 
 def binary_classifier(args):
     log_path = os.path.join(args['results_dir'], 'results.log')
@@ -219,10 +248,10 @@ def binary_classifier(args):
     signaturs_combined.to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
 
     create_folder_if_not_exists(os.path.join(args['results_dir'],'fragments'))
-    fragment_finder(signaturs_combined, os.path.join(args['results_dir'],'fragments'))
+    top_fragment_indices = fragment_finder(signaturs_combined, os.path.join(args['results_dir'],'fragments'), features_info, samples)
     
-    plot_top_coefficients(signaturs_combined.head(100),coefficients, top_featurs_path)
-    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'])
+    # plot_top_coefficients(fragment_top,coefficients, top_featurs_path)
+    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'], top_fragment_indices[:30])
     
     logger.info('Top 10 signatures plotted in top_coefficients folder.')
 

@@ -81,25 +81,26 @@ def plot_top_coefficients(signatures_info, coefficients_pvalues, results_dir, to
     plt.savefig(os.path.join(results_dir, f'top_{top_n}_coefficient.pdf'), format='pdf', bbox_inches='tight', dpi=300)
 
 
-def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n=20):
-    X_selected = X_train[:, coefficients[:top_n,0].astype(int)]
+def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n_indices = []):
 
-    X_sorted = X_selected[train_samples.sort_values(label_column_name).index].copy()
+    X_selected = X_train[:, top_n_indices[:,0].astype(int)].copy()
 
-    class_0_count = np.sum(train_samples[label_column_name] == 0)
-    X_sorted[class_0_count:,:] = np.where(X_sorted[class_0_count:,:] == 1, 2, X_sorted[class_0_count:,:])
+    # import code; code.interact(local=dict(globals(), **locals()))
+
+    class_1_count = np.sum(train_samples[label_column_name] == 1)
+    X_selected[class_1_count:,:] = np.where(X_selected[class_1_count:,:] == 1, 2, X_selected[class_1_count:,:])
 
     # plt.figure(figsize=(16,12))
-    sns.set(font_scale=1.4)
+    sns.set(font_scale=1.2)
 
     # Define colors for each value
-    colors = ["white", "#000", "#000"]  # Colors for 0, 1, and 2 respectively
+    colors = ["white", "#3c5488", "#e64b35"]
     cmap = mcolors.ListedColormap(colors)
 
-    sns.heatmap(X_sorted.T, cmap=cmap, yticklabels=range(1,top_n+1), xticklabels=train_samples.sort_values(label_column_name)[csv_file_name_column].to_numpy() ,cbar=False, linecolor='gray', linewidth=0.5,square=True)
+    sns.heatmap(X_selected, cmap=cmap, xticklabels=top_n_indices[:,1], yticklabels=train_samples['sample_name'].to_numpy() ,cbar=False, linecolor='gray', linewidth=0.5,square=True)
     # Save the plot as a PDF file
     # plt.tight_layout()
-    plt.savefig(os.path.join(results_dir,f'top{top_n}_features.pdf'), format="pdf", bbox_inches='tight',dpi=400)
+    plt.savefig(os.path.join(results_dir,f'top_features.pdf'), format="pdf", bbox_inches='tight',dpi=400)
 
 def add_arrow(x_start,y_start,x_end,y_end, text,line_color='#a1caf7'):
     plt.annotate(text,               # text to display
@@ -262,6 +263,10 @@ def plot_3d_signatures_interactive(all_signatures, result_dir):
     fig.write_html(os.path.join(result_dir,'3d_plots_signatures_interactive.html'))
 
 def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
+
+    hollow_circle = get_marker('markers/noun-circle-hatch-empty-1625504.svg')
+
+
     all_signatures = all_signatures.copy()
     rt1_center = []
     rt2_center = []
@@ -282,8 +287,7 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
     if view == 'small':
         legend_sizes = [3000,
-                        2500,
-                        1500,
+                        2000,
                         1000,
                         500,
                         150]
@@ -297,18 +301,16 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     all_signatures['point_size'] = 0
     for idx, row in all_signatures.iterrows():
 
-        if row['coefficient_abs'] >= 0.10:
+        if row['coefficient_abs'] >= 0.02:
             all_signatures.at[idx, 'point_size'] = legend_sizes[0]
-        elif row['coefficient_abs'] >= 0.08:
+        elif row['coefficient_abs'] >= 0.015:
             all_signatures.at[idx, 'point_size'] = legend_sizes[1]
-        elif row['coefficient_abs'] >= 0.06:
+        elif row['coefficient_abs'] >= 0.010:
             all_signatures.at[idx, 'point_size'] = legend_sizes[2]
-        elif row['coefficient_abs'] >= 0.04:
+        elif row['coefficient_abs'] >= 0.005:
             all_signatures.at[idx, 'point_size'] = legend_sizes[3]
-        elif row['coefficient_abs'] >= 0.02:
-            all_signatures.at[idx, 'point_size'] = legend_sizes[4]
         else:
-            all_signatures.at[idx, 'point_size'] = legend_sizes[5]
+            all_signatures.at[idx, 'point_size'] = legend_sizes[4]
 
     all_signatures = all_signatures.sort_values(by='point_size', ascending=False)
 
@@ -335,6 +337,7 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
         s=all_signatures['point_size'],
         alpha=1,
         edgecolors='w',
+        # marker=hollow_circle
     )
 
     # Adding labels and title
@@ -369,7 +372,7 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
     # Create legend handles
     legend_handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=np.sqrt(s), label=label)
-                  for s, label in zip(legend_sizes, ['>= 0.10', '0.08 - 0.10', '0.06 - 0.08', '0.04 - 0.06', '0.02 - 0.04', ' < 0.02'])]
+                  for s, label in zip(legend_sizes, ['>= 0.02',  '0.015 - 0.02', '0.010 - 0.015', '0.005 - 0.010', ' < 0.005'])]
 
     # Add the legend to the plot
     legend1 = ax.legend(handles=legend_handles, handletextpad=2.5, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=4, frameon=False, ncol=2)

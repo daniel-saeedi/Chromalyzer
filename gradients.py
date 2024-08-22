@@ -1,121 +1,74 @@
-import sys
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import logging
-from sklearn.svm import SVR
-from sklearn.linear_model import LinearRegression
-from statsmodels.nonparametric.smoothers_lowess import lowess
-from scipy.interpolate import interp1d
-from sklearn.neighbors import NearestNeighbors
-from numba import jit
-from scipy import sparse
 import pandas as pd
+from concurrent.futures import ProcessPoolExecutor
 
-df = pd.read_csv('combined_peaks_named.csv')
-df.describe()
+raw_path = '/usr/scratch/NASA/raw/'
+samples = pd.read_csv('data/labels.csv')
 
-def gradient_calculator_gaussian_kde(x, data, bandwidth):
-    D = data.shape[1]
-    N = data.shape[0]
-    grad = np.zeros((1, D))
+min_index = []
+max_index = []
 
-    h = bandwidth
+min_spectrum = []
+max_spectrum = []
 
-    C = 1/(N*h**D * np.sqrt(2*np.pi)**D)
-    F = -1/(2*h**2)
-    for i in range(D):
-        for n in range(N):
-            grad[0, i] += 2 * C * F * (x[i] - data[n, i]) * np.exp(F * np.sum((x - data[n])**2))
-    
-    return grad
+min_TOF = []
+max_TOF = []
 
+min_mz = []
+max_mz = []
 
-from scipy import stats
-from sklearn.neighbors import KernelDensity
-from sklearn.preprocessing import StandardScaler
-import numpy as np
-import numpy as np
-from sklearn.neighbors import KernelDensity
-from sklearn.model_selection import GridSearchCV
+min_area = []
+max_area = []
 
-df1 = df[df['class'] == 0]
-df2 = df[df['class'] == 1]
+min_resolutions = []
+max_resolutions = []
 
-features_all = df[['RT1_center', 'RT2_center', 'm/z']].to_numpy()
-features_class0_ = df1[['RT1_center', 'RT2_center', 'm/z']].to_numpy()
-features_class1_ = df2[['RT1_center', 'RT2_center', 'm/z']].to_numpy()
+def process_sample(row):
+    raw_sample = pd.read_csv(f'{raw_path}{row["csv_file_name"]}')
+    return {
+        'min_spectrum': raw_sample['Spectrum'].min(),
+        'max_spectrum': raw_sample['Spectrum'].max(),
+        'min_TOF': raw_sample['TOF'].min(),
+        'max_TOF': raw_sample['TOF'].max(),
+        'min_mz': raw_sample['M/Z'].min(),
+        'max_mz': raw_sample['M/Z'].max(),
+        'min_area': raw_sample['Area'].min(),
+        'max_area': raw_sample['Area'].max(),
+        'min_resolutions': raw_sample['Resolution'].min(),
+        'max_resolutions': raw_sample['Resolution'].max(),
+        'min_index': raw_sample.index.min(),
+        'max_index': raw_sample.index.max()
+    }
 
-# Normalize all features
-scaler = StandardScaler()
-scaler.fit(features_all)
-biotic_peaks_normalized = scaler.transform(features_class1_)
-abiotic_peaks_normalized = scaler.transform(features_class0_)
+    print(row['csv_file_name'], 'processed')
 
+# Use ProcessPoolExecutor for parallel processing
+with ProcessPoolExecutor() as executor:
+    results = list(executor.map(process_sample, [row for _, row in samples.iterrows()]))
 
-# Define the bandwidth values to test
-bandwidths = np.linspace(0.1, 1.0, 30)
+# Collect the results
+for result in results:
+    min_spectrum.append(result['min_spectrum'])
+    max_spectrum.append(result['max_spectrum'])
+    min_TOF.append(result['min_TOF'])
+    max_TOF.append(result['max_TOF'])
+    min_mz.append(result['min_mz'])
+    max_mz.append(result['max_mz'])
+    min_area.append(result['min_area'])
+    max_area.append(result['max_area'])
+    min_resolutions.append(result['min_resolutions'])
+    max_resolutions.append(result['max_resolutions'])
+    min_index.append(result['min_index'])
+    max_index.append(result['max_index'])
 
-# Set up the grid search
-grid = GridSearchCV(KernelDensity(kernel='gaussian'),
-                    {'bandwidth': bandwidths},
-                    cv=5)  # 5-fold cross-validation
-
-# Fit the grid search
-grid.fit(biotic_peaks_normalized)
-
-# Get the best bandwidth
-best_bandwidth = grid.best_estimator_.bandwidth
-print(f"Best bandwidth: {best_bandwidth}")
-
-# Fit KDE with the best bandwidth
-kde = KernelDensity(bandwidth=best_bandwidth, kernel='gaussian')
-kde.fit(biotic_peaks_normalized)
-best_bandwidth
-
-import multiprocessing as mp
-from functools import partial
-
-def parallel_gradient_calculation(features, biotic_peaks_normalized, best_bandwidth):
-    with mp.Pool() as pool:
-        gradient_calculator = partial(gradient_calculator_gaussian_kde, 
-                                      data=biotic_peaks_normalized, 
-                                      bandwidth=best_bandwidth)
-        gradients = pool.map(gradient_calculator, features)
-    return np.array(gradients).reshape(-1, 3)
-
-# 'Learning' rate - controls how influential gradients are
-alpha = 1e-3
-
-gradients_at_time_t = []
-
-points_at_time_t = []
-
-# Initialization
-
-features = abiotic_peaks_normalized.copy()
-
-time_steps = 10000
-for t in range(time_steps):
-    # Compute gradient and move in that directionR
-    gradients = parallel_gradient_calculation(features, biotic_peaks_normalized, best_bandwidth)
-
-    # Prevent exploding gradients due to approximation error
-    # gradients = np.clip(gradients, -1, 1)
-
-    # normalize gradients
-    gradients_normalized = gradients / np.linalg.norm(gradients, axis=1)[:, None]
-
-    features += (alpha) * gradients_normalized
-
-    # Update new feature locations
-    points_at_time_t.append(scaler.inverse_transform(features))
-
-    gradients_at_time_t.append(gradients * scaler.scale_)
-    if t % 10 == 0:
-        print('Step ', t)
-
-
-# Save gradients_at_time_t
-np.save('gradients_at_time_t.npy', np.array(gradients_at_time_t) )
-np.save('points_at_time_t.npy', np.array(points_at_time_t) )        
+print(f'Min Spectrum: {min_spectrum}')
+print(f'Max Spectrum: {max_spectrum}')
+print(f'Min TOF: {min_TOF}')
+print(f'Max TOF: {max_TOF}')
+print(f'Min M/Z: {min_mz}')
+print(f'Max M/Z: {max_mz}')
+print(f'Min Area: {min_area}')
+print(f'Max Area: {max_area}')
+print(f'Min Resolution: {min_resolutions}')
+print(f'Max Resolution: {max_resolutions}')
+print(f'Min Index: {min_index}')
+print(f'Max Index: {max_index}')
