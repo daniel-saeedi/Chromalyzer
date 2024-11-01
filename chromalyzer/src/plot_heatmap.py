@@ -27,6 +27,6 @@ def plot_heatmap(config):
     else:
         ht_df = load_heatmap_data(output_dir_heatmap, int(m_z), sample_name)
         save_path = os.path.join(plot_dir, f'm_z_{m_z}_sample_{sample_name}_heatmap.pdf')
-        # plt_heatmap(save_path, ht_df, full_spectrum=False, t1_start=350, t1_end=1350, t2_start=350, t2_end=150, title=f'Heatmap for {sample_name} with m/z {m_z}',small=True ,save=True)
-        plt_heatmap(save_path, ht_df, full_spectrum=True, title=f'Heatmap for {sample_name} with m/z {m_z}',small=False ,save=True)
+        plt_heatmap(save_path, ht_df, full_spectrum=False, t1_start=400, t1_end=1200, t2_start=350, t2_end=150, title=f'Heatmap for {sample_name} with m/z {m_z}',small=True ,save=True)
+        # plt_heatmap(save_path, ht_df, full_spectrum=True, title=f'Heatmap for {sample_name} with m/z {m_z}',small=False ,save=True)
         logger.info(f'Heatmap for {sample_name} with m/z {m_z} plotted successfully!')

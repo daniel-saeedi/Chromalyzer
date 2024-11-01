@@ -3,7 +3,7 @@ import chromalyzer
 
 config = {
     "parallel_processing": True,
-    "number_of_splits": 50,
+    "number_of_splits": 100,
 
     "mz_list_path": "data/all_mz_values.csv",
     "labels_path": "data/labels.csv",

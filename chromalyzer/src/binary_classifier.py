@@ -17,7 +17,7 @@ import statsmodels.api as sm
 from scipy import stats
 
 
-def binary_class_signatures(coefficients_pvalues, features_info, results_path,samples,X_train, csv_file_name_column):
+def binary_class_signatures(coefficients_pvalues, features_info, results_path,samples,X_train, csv_file_name_column, labels):
     signatures_class_0 = []
     signatures_class_1 = []
 
@@ -31,13 +31,12 @@ def binary_class_signatures(coefficients_pvalues, features_info, results_path,sa
         RT1_center = features_info.iloc[index]['RT1_center']
         RT2_center = features_info.iloc[index]['RT2_center']
 
-
-
-
         # What samples contain this signature?
         samples_with_this_sign = ''
         for sample in samples.iloc[np.where(X_train[:,index] == 1)[0].reshape(-1)][csv_file_name_column].to_numpy().tolist():
             samples_with_this_sign += sample +', '
+        
+        samples_with_this_sign = replace_sample_name(samples_with_this_sign, labels)
 
         values, counts = np.unique(samples.iloc[np.where(X_train[:,index] == 1)[0].reshape(-1)].to_numpy().tolist(), return_counts=True)
 
@@ -46,15 +45,15 @@ def binary_class_signatures(coefficients_pvalues, features_info, results_path,sa
         cluster_label = int(values[np.argmax(counts)])
         if coefficient < 0:
             # Abiotic
-            signatures_class_0.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,RT1_center,RT2_center, index, cluster_label])
+            signatures_class_0.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',RT1_center,RT2_center, samples_with_this_sign, index, cluster_label])
         else:
             # Biotic
-            signatures_class_1.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',samples_with_this_sign,RT1_center,RT2_center, index, cluster_label])
+            signatures_class_1.append([coefficient,m_z,f'[{first_time_start},{first_time_end}]',f'[{second_time_end},{second_time_start}]',RT1_center,RT2_center, samples_with_this_sign, index, cluster_label])
 
 
     create_folder_if_not_exists(os.path.join(results_path))
-    signatures_class0 = pd.DataFrame(signatures_class_0,columns=['coefficient','m/z','RT1','RT2','samples','RT1_center','RT2_center','feature_index','class'])
-    signatures_class1 = pd.DataFrame(signatures_class_1,columns=['coefficient','m/z','RT1','RT2','samples','RT1_center','RT2_center','feature_index','class'])
+    signatures_class0 = pd.DataFrame(signatures_class_0,columns=['coefficient','m/z','RT1','RT2','RT1_center','RT2_center','samples','feature_index','class'])
+    signatures_class1 = pd.DataFrame(signatures_class_1,columns=['coefficient','m/z','RT1','RT2','RT1_center','RT2_center','samples','feature_index','class'])
 
     signatures_class0.to_csv(os.path.join(results_path ,f'lr_l2_class0_signatures.csv'))
     signatures_class1.to_csv(os.path.join(results_path, f'lr_l2_class1_signatures.csv'))
@@ -139,7 +138,71 @@ def mann_whitney_u_test_rt2(peaks_features_df):
         logger.info("Reject null hypothesis-> Abiotic peak distribution for RT2 is significantly higher than biotic")
     else:
         logger.info("Fail to reject null hypothesis-> Abiotic peak distribution for RT2 is not significantly higher than biotic")
+
+def kolmogorov_smirnov_test(peaks_features_df, dimension):
+    biotic_peaks = peaks_features_df[peaks_features_df['class'] == '1'][dimension].to_numpy()
+    abiotic_peaks = peaks_features_df[peaks_features_df['class'] == '0'][dimension].to_numpy()
+
+    statistic, p_value = stats.ks_2samp(abiotic_peaks, biotic_peaks)
+
+    logger.info(f'Kolmogorov-Smirnov test for {dimension} - statistic: {statistic}, p-value: {p_value}')
+
+    if p_value < 0.05:
+        logger.info(f"Reject null hypothesis -> The distributions of {dimension} for abiotic and biotic peaks are significantly different")
+    else:
+        logger.info(f"Fail to reject null hypothesis -> There is no significant difference in the distributions of {dimension} for abiotic and biotic peaks")
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
+
+def plot_accuracy_drop_zeroing_coefficients(X_train, y_train, lr_model, result_dir):
+    """
+    Plot the accuracy drop as top feature coefficients are set to zero one by one.
     
+    Parameters:
+    - X_train: training features
+    - y_train: training labels
+    - lr_model: trained LogisticRegression model
+    - n_features: number of top features to consider (default: 50)
+    
+    Returns:
+    - None (saves the plot)
+    """
+    # Get the original coefficients
+    original_coefficients = lr_model.coef_[0].copy()
+    
+    # Sort features by absolute coefficient value
+    sorted_feature_indices = np.argsort(np.abs(original_coefficients))[::-1]
+    
+    # Initialize list to store accuracies
+    accuracies = []
+    
+    # Calculate initial accuracy
+    accuracies.append(accuracy_score(y_train, lr_model.predict(X_train)))
+    
+    # Iterate through features, setting their coefficients to zero one by one
+    for i in range(1, X_train.shape[1] + 1):
+        # Set the coefficient of the i-th most important feature to zero
+        lr_model.coef_[0][sorted_feature_indices[i-1]] = 0
+        
+        # Recalculate accuracy
+        accuracies.append(accuracy_score(y_train, lr_model.predict(X_train)))
+    
+    # Plot results
+    plt.figure(figsize=(12, 6))
+    plt.plot(range(X_train.shape[1] + 1), accuracies)
+    plt.xlabel('Number of Top Features Zeroed')
+    plt.ylabel('Classification Accuracy')
+    plt.title('Accuracy Drop as Top Feature Coefficients are Set to Zero')
+    plt.grid(True)
+    
+    # Save the plot
+    plt.savefig(os.path.join(result_dir,'accuracy_drop_zeroing_coefficients_plot.pdf'),format='pdf',bbox_inches='tight', dpi=300)
+    plt.close()
+    
+    # Restore original coefficients
+    lr_model.coef_[0] = original_coefficients
 
 # samples: separated by comma
 def replace_sample_name(samples, labels):
@@ -151,12 +214,14 @@ def replace_sample_name(samples, labels):
         new_samples.append(labels[labels['csv_file_name'] == sample]['sample_name'].iloc[0])
     return ', '.join(new_samples)
 
-def fragment_finder(df,path, features_info, labels):
+def feature_group_finder(df,path, features_info, labels):
     df = df.copy()
 
     i = 1
-    top_fragment_indices = []
-    frag_info = []
+    top_feature_group_indices = []
+    feature_gp_info = []
+
+    features_groups_combined = []
     while len(df) != 0:
         row = df.iloc[0]
         rt1 = row['RT1_center']
@@ -165,22 +230,40 @@ def fragment_finder(df,path, features_info, labels):
         m_z = int(row['m/z'])
         path_to_save = os.path.join(path, f'rank_{i}.csv')
 
-        fragments = df[(df['RT1_center'] > rt1 - 15) & (df['RT1_center'] < rt1 + 15) & (df['RT2_center'] > rt2 - 0.8) & (df['RT2_center'] < rt2 + 0.8)]
-        if len(fragments) != 0:
-            pd.DataFrame(fragments).to_csv(path_to_save)
+        feature_groups = df[(df['RT1_center'] > rt1 - 15) & (df['RT1_center'] < rt1 + 15) & (df['RT2_center'] > rt2 - 0.8) & (df['RT2_center'] < rt2 + 0.8)]
+        if len(feature_groups) != 0:
+            fg = pd.DataFrame(feature_groups)
+
+            fg['group_rank'] = i
+            fg.to_csv(path_to_save)
+
+            features_groups_combined.append(fg)
+
             i += 1
-            df = df.drop(fragments.index)
+            df = df.drop(feature_groups.index)
             
-            top_fragment_indices.append((index, f'({m_z}, {rt1/60:.2f}, {rt2:.2f})'))
+            top_feature_group_indices.append((index, f'({m_z}, {rt1/60:.2f}, {rt2:.2f})'))
 
             # replace the sample names with the sample names in the labels
-            fragments['samples'] = fragments['samples'].apply(lambda x: replace_sample_name(x, labels))
+            # feature_groups['samples'] = feature_groups['samples'].apply(lambda x: replace_sample_name(x, labels))
+
             
-            frag_info.append(fragments.iloc[0])
+            feature_gp_info.append(feature_groups.iloc[0])
     
-    pd.DataFrame(frag_info).to_csv(os.path.join(path, 'fragments_info.csv'))
-    pd.DataFrame(top_fragment_indices, columns=['feature_index', 'm/z, RT1, RT2']).to_csv(os.path.join(path, 'top_fragments.csv'))
-    return np.array(top_fragment_indices)
+    # Combined the feature groups
+    df = pd.concat(features_groups_combined).to_csv(os.path.join(path, 'feature_groups_combined.csv'))
+    
+    # Assuming feature_gp_info is your data
+    df = pd.DataFrame(feature_gp_info, columns=['coefficient', 'm/z', 'RT1', 'RT2', 'RT1_center', 'RT2_center', 'samples', 'feature_index', 'class'])
+
+    # Add a new index column
+    df['group_rank'] = range(1, len(df) + 1)
+    df = df.set_index(['group_rank',df.index])
+
+    # Save the DataFrame to a CSV
+    df.to_csv(os.path.join(path, 'feature_groups_info.csv'))
+    pd.DataFrame(top_feature_group_indices, columns=['feature_index', 'm/z, RT1, RT2']).to_csv(os.path.join(path, 'top_feature_groups.csv'))
+    return np.array(top_feature_group_indices)
 
 def binary_classifier(args):
     log_path = os.path.join(args['results_dir'], 'results.log')
@@ -231,12 +314,13 @@ def binary_classifier(args):
     # p_values = calculate_pvalues(args['number_of_bootstraps'], C, seed, X_train, train_samples, args['label_column_name'])
     # logger.info('P-values calculated.')
 
+
     # Combine the coefficients
     coefficients = sorted(enumerate(coefficients), key=lambda x: abs(x[1]), reverse=True)
     coefficients = np.array([(index, value) for index, value in coefficients])
 
     # Save signatures per class
-    signatures_class0, signatures_class1 = binary_class_signatures(coefficients, features_info, args['results_dir'],train_samples,X_train, args['csv_file_name_column'])
+    signatures_class0, signatures_class1 = binary_class_signatures(coefficients, features_info, args['results_dir'],train_samples,X_train, args['csv_file_name_column'],samples)
     logger.info('Signatures saved.')
 
     # Plotting top 10 highest to lowest coefficients
@@ -245,14 +329,20 @@ def binary_classifier(args):
 
     signaturs_combined = pd.concat([signatures_class0,signatures_class1]).sort_values(by='coefficient',key=abs,ascending=False).reset_index(drop=True)
     signaturs_combined.index = signaturs_combined.index + 1
-    signaturs_combined.to_csv(os.path.join(top_featurs_path,'lr_l2_signatures_combined.csv'))
+    signaturs_combined.to_csv(os.path.join(top_featurs_path,'lr_l2_top_features_combined.csv'))
 
-    create_folder_if_not_exists(os.path.join(args['results_dir'],'fragments'))
-    top_fragment_indices = fragment_finder(signaturs_combined, os.path.join(args['results_dir'],'fragments'), features_info, samples)
+    create_folder_if_not_exists(os.path.join(args['results_dir'],'feature_groups'))
+    top_feature_group_indices = feature_group_finder(signaturs_combined, os.path.join(args['results_dir'],'feature_groups'), features_info, samples)
     
-    # plot_top_coefficients(fragment_top,coefficients, top_featurs_path)
-    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'], top_fragment_indices[:30])
-    
+    # plot_top_coefficients(top_feature_group_indices,coefficients, top_featurs_path)
+    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'], top_feature_group_indices[:30], type = 'top')
+
+    # Plot specific features for figure 1b
+    specific_features = [0,1,2,3,4,5,6, 446, 597, 1067, 1068, 1069, 1070,1071]
+    features_info = features_info.iloc[specific_features]
+    specific_features = [(index, f'({index}, {features_info.iloc[i]["m/z"]}, {features_info.iloc[i]["RT1_center"]/60:.2f}, {features_info.iloc[i]["RT2_center"]:.2f})') for i, index in enumerate(specific_features)]
+    plot_top_features(X_train, coefficients, train_samples, top_featurs_path, args['label_column_name'], args['csv_file_name_column'], np.array(specific_features), type = 'specific')
+
     logger.info('Top 10 signatures plotted in top_coefficients folder.')
 
     # Plotting PCA
@@ -289,3 +379,12 @@ def binary_classifier(args):
     mann_whitney_u_test_mz(peaks_features_df)
     mann_whitney_u_test_rt1(peaks_features_df)
     mann_whitney_u_test_rt2(peaks_features_df)
+
+    # Add K-S tests
+    kolmogorov_smirnov_test(peaks_features_df, 'm/z')
+    kolmogorov_smirnov_test(peaks_features_df, 'RT1')
+    kolmogorov_smirnov_test(peaks_features_df, 'RT2')
+
+    # Plot accuracy drop
+    plot_accuracy_drop_zeroing_coefficients(X_train, y_train, lr, args['results_dir'])
+    logger.info('Accuracy drop plot saved.')

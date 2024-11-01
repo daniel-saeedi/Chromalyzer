@@ -48,7 +48,7 @@ def find_clusters(points, threshold, min_points=20):
 
     return clusters
 
-def find_peaks(filtered_binary,threshold = 5):
+def find_peaks(filtered_binary,threshold = 5, rt1_timestep = 3.504, rt2_timestep = 0.008):
     coordinates = np.column_stack(np.where(filtered_binary))
 
     clusters = find_clusters(coordinates, threshold)
@@ -58,7 +58,7 @@ def find_peaks(filtered_binary,threshold = 5):
     cluster_centers = []
 
     for cluster in cluster_rectangles:
-        cluster_centers.append(find_center(cluster))
+        cluster_centers.append(find_center_indices(cluster))
 
     return cluster_centers,cluster_rectangles
 
@@ -147,6 +147,12 @@ def extract_peaks_process(save_peaks_path, config,params):
 
     first_time_axis = np.load(os.path.join(config['output_dir_TII_aligned'], f'first_time.npy'))
     second_time_axis = np.load(os.path.join(config['output_dir_TII_aligned'], f'second_time.npy'))
+
+    rt1_axis = np.load(os.path.join(config['output_dir_TII_aligned'], 'first_time.npy'))
+    rt2_axis = np.load(os.path.join(config['output_dir_TII_aligned'], 'second_time.npy'))
+    rt1_timestep = round(rt1_axis[1] - rt1_axis[0],3)
+    rt2_timestep = round(rt2_axis[0] - rt2_axis[1],3)
+
     
     for param in params:
         lam1 = param[0]
@@ -175,7 +181,7 @@ def extract_peaks_process(save_peaks_path, config,params):
                     df_peaks = pd.DataFrame([], columns=['csv_file_name', 'peak_area','RT1_center', 'RT2_center', 'RT1_start', 'RT2_start', 'RT1_end', 'RT2_end'])
                     continue
             
-            cluster_centers,cluster_rectangles = find_peaks(filtered, threshold=config['peak_max_neighbor_distance'])
+            cluster_centers,cluster_rectangles = find_peaks(filtered, threshold=config['peak_max_neighbor_distance'], rt1_timestep=rt1_timestep, rt2_timestep=rt2_timestep)
 
             
 

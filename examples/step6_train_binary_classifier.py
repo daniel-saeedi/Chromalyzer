@@ -20,8 +20,8 @@ config = {
     "number_of_bootstraps": 1000,
     "lambda1": 0.4,
     "lambda2": 2.0,
-    "rt1_threshold": 10,
-    "rt2_threshold": 100,
+    "rt1_threshold": 35.04,
+    "rt2_threshold": 0.8,
 }
 
 chromalyzer.binary_classifier.binary_classifier(config)

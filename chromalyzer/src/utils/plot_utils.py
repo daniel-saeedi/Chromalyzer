@@ -26,11 +26,12 @@ fm.fontManager.addfont(font_path)
 font_name = font_prop.get_name()
 plt.rcParams['font.family'] = font_name
 
-colors_biotic = ["#143c55", "#366ea5", "#5aa5d7", "#a0877d","#c3e1e6", "#6db4be", "#c3c378", "#9bbe87", "#279b91", "#9be1af"]
-# Shuffle the colors with seed
-random.seed(102)
-random.shuffle(colors_biotic)
-colors_abiotic = ["#e6550c","#d22323","#410868","#c86468","#932467","#b53778","#f66e5b","#fdcc90"]
+colors_biotic = ["#e64b35", "#4dbbd5", "#00a087", "#3c5488", "#b967ff", "#01cdfe", "#4682B4", "#05ffa1", "#ff71ce", "#ffc100"]
+
+# # Shuffle the colors with seed
+# random.seed(102)
+# random.shuffle(colors_biotic)
+colors_abiotic = ["#e64b35", "#4dbbd5", "#00a087", "#3c5488", "#b967ff", "#01cdfe", "#4682B4", "#05ffa1"]
 
 def get_feature_name(i, signature_info):
     RT1 = eval(signature_info['RT1'])
@@ -81,16 +82,37 @@ def plot_top_coefficients(signatures_info, coefficients_pvalues, results_dir, to
     plt.savefig(os.path.join(results_dir, f'top_{top_n}_coefficient.pdf'), format='pdf', bbox_inches='tight', dpi=300)
 
 
-def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n_indices = []):
+def plot_top_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column, top_n_indices = [], type = 'top'):
 
     X_selected = X_train[:, top_n_indices[:,0].astype(int)].copy()
-
-    # import code; code.interact(local=dict(globals(), **locals()))
 
     class_1_count = np.sum(train_samples[label_column_name] == 1)
     X_selected[class_1_count:,:] = np.where(X_selected[class_1_count:,:] == 1, 2, X_selected[class_1_count:,:])
 
     # plt.figure(figsize=(16,12))
+    sns.set(font_scale=1.2)
+
+    # Define colors for each value
+    if type == 'top':
+        colors = ["white", "#3c5488", "#e64b35"]
+    else:
+        colors = ["#999999", "black", "black"]
+    cmap = mcolors.ListedColormap(colors)
+
+    if type == 'top':
+        sns.heatmap(X_selected, cmap=cmap, xticklabels=top_n_indices[:,1], yticklabels=train_samples['sample_name'].to_numpy() ,cbar=False, linecolor='gray', linewidth=0.5,square=True)
+    else:
+        # transpose
+        sns.heatmap(X_selected.T, cmap=cmap, xticklabels=train_samples['sample_name'].to_numpy(), yticklabels=top_n_indices[:,1], cbar=False, linecolor='white', linewidth=0.5,square=True)
+    # Save the plot as a PDF file
+    # plt.tight_layout()
+    if type == 'top':
+        plt.savefig(os.path.join(results_dir,f'top_features.pdf'), format="pdf", bbox_inches='tight',dpi=400)
+    else:
+        plt.savefig(os.path.join(results_dir,f'specific_features.pdf'), format="pdf", bbox_inches='tight',dpi=400)
+
+def plot_all_features(X_train, coefficients, train_samples, results_dir, label_column_name, csv_file_name_column):
+    
     sns.set(font_scale=1.2)
 
     # Define colors for each value
@@ -169,11 +191,11 @@ def plot_2d_features(all_signatures, peaks_features_df, num_clusters, result_dir
     # Plot the scatter plot with conditional colors
     plt.scatter(peaks_features_df['RT1'], peaks_features_df['RT2'], c=colors, s=10)
 
-    plt.xlabel('1st Time', fontsize=12)  # Increase font size for x-axis label
-    plt.ylabel('2nd Time', fontsize=12)  # Increase font size for y-axis label
+    plt.xlabel('RT1 (s)', fontsize=16)  # Increase font size for x-axis label
+    plt.ylabel('RT2 (s)', fontsize=16)  # Increase font size for y-axis label
 
-    plt.xticks(fontsize=12)  # Increase font size for x-axis ticks
-    plt.yticks(fontsize=12)  # Increase font size for y-axis ticks
+    plt.xticks(fontsize=16)  # Increase font size for x-axis ticks
+    plt.yticks(fontsize=16)  # Increase font size for y-axis ticks
 
     maxc_maxr = []
 
@@ -286,11 +308,11 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     all_signatures = all_signatures.sort_values(by=['m/z','RT1_center', 'RT2_center'], ascending=[True,True, True])
 
     if view == 'small':
-        legend_sizes = [3000,
-                        2000,
-                        1000,
-                        500,
-                        150]
+        legend_sizes = [500,
+                        250,
+                        125,
+                        62.5,
+                        31.25]
     else:
         legend_sizes = [5000,
                         2500,
@@ -318,7 +340,7 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     color_map = {'0': '#e64b35', '1': '#3c5488'}
 
     if view == 'small':
-        fig = plt.figure(figsize=(12, 12))
+        fig = plt.figure(figsize=(5.0022, 10))
     else:
         fig = plt.figure(figsize=(20, 20))
 
@@ -330,27 +352,28 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
 
     # Scatter plot
     sc = ax.scatter(
-        all_signatures['RT2_center'],
         all_signatures['RT1_center'],
+        all_signatures['RT2_center'],
         all_signatures['m/z'],
         c=[color_map[x] for x in all_signatures['class']],
         s=all_signatures['point_size'],
         alpha=1,
         edgecolors='w',
+        linewidths=0.5,
         # marker=hollow_circle
     )
 
     # Adding labels and title
-    ax.set_xlabel('2nd Time (s)', labelpad=30)
-    ax.set_ylabel('1st Time (min)', labelpad=30)
-    ax.set_zlabel('m/z', labelpad=30)
+    ax.set_ylabel('2nd Time (s)', labelpad=1, fontsize=8)
+    ax.set_xlabel('1st Time (min)', labelpad=1, fontsize=8)
+    ax.set_zlabel('m/z', labelpad=1, fontsize=8)
 
     # Set tick font size
-    ax.tick_params(axis='both', which='major', labelsize=20)
+    ax.tick_params(axis='both', which='major', labelsize=8)
     # Increase the space between tick labels and the axes
-    ax.tick_params(axis='x', which='major', pad=15)
-    ax.tick_params(axis='y', which='major', pad=15)
-    ax.tick_params(axis='z', which='major', pad=15)
+    ax.tick_params(axis='x', which='major', pad=1)
+    ax.tick_params(axis='y', which='major', pad=1)
+    ax.tick_params(axis='z', which='major', pad=1)
 
     # Set background color to white and edge color to black
     ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -358,7 +381,7 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
     ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
     if view == 'small':
-        ax.set_box_aspect([2.5, 4, 2])
+        ax.set_box_aspect([6, 4, 3])
     else:
         ax.set_box_aspect([3, 4, 2])
 
@@ -375,15 +398,15 @@ def plot_3d_signatures(all_signatures, result_dir, view = 'small'):
                   for s, label in zip(legend_sizes, ['>= 0.02',  '0.015 - 0.02', '0.010 - 0.015', '0.005 - 0.010', ' < 0.005'])]
 
     # Add the legend to the plot
-    legend1 = ax.legend(handles=legend_handles, handletextpad=2.5, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=4, frameon=False, ncol=2)
+    legend1 = ax.legend(handles=legend_handles, handletextpad=2.5, fontsize='6', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=4, frameon=False, ncol=3)
     ax.add_artist(legend1)
 
     ax.legend(handles=[Patch(facecolor=color_map['0'], label='Abiotic'), Patch(facecolor=color_map['1'], label='Biotic')],
-          fontsize='12', title_fontsize='14', handlelength=2, loc='upper left', borderpad=1.2, labelspacing=1.5, frameon=False)
+          fontsize='6', title_fontsize='14', handlelength=2, loc='upper left', borderpad=1.2, labelspacing=1.5, frameon=False)
 
 
-    ax.set_xlim(0.5, 3.5)
-    ax.set_ylim(35, 190)
+    ax.set_ylim(0.2, 3.5)
+    ax.set_xlim(35, 190)
     ax.set_zlim(30,500)
 
 
@@ -433,7 +456,7 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
         selected_samples = samples[samples['label']==0]['csv_file_name']
     peaks_features_df = peaks_features_df[peaks_features_df['sample'].isin(selected_samples)]
 
-    peaks_features_df['point_size'] = 700
+    peaks_features_df['point_size'] = 2000
     
     import matplotlib.path as mpath
 
@@ -490,7 +513,7 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
         colors = colors_abiotic
 
     if view == 'small':
-        fig = plt.figure(figsize=(12, 12))
+        fig = plt.figure(figsize=(5.0022, 10))
     else:
         fig = plt.figure(figsize=(20, 20))
     ax = fig.add_subplot(111, projection='3d')
@@ -506,12 +529,12 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
         sample_name = samples[samples['csv_file_name'] == sample].iloc[0]['sample_name']
 
         ax.scatter(
-            sample_df['RT2'],
             sample_df['RT1'],
+            sample_df['RT2'],
             sample_df['m/z'],
             c=colors[i % len(colors)],
             marker=markers[i % len(markers)],
-            s=600,
+            s=50,
             alpha=1,
             # edgecolors='w',
             label=sample_name
@@ -519,33 +542,32 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
 
 
     # Adding labels and title
-    ax.set_xlabel('2nd Time (s)', labelpad=30)
-    ax.set_ylabel('1st Time (min)', labelpad=30)
-    ax.set_zlabel('m/z', labelpad=30)
+    ax.set_ylabel('2nd Time (s)', labelpad=1, fontsize=8)
+    ax.set_xlabel('1st Time (min)', labelpad=1, fontsize=8)
+    ax.set_zlabel('m/z', labelpad=1, fontsize=8)
 
     # Set tick font size
-    ax.tick_params(axis='both', which='major', labelsize=20)
+    ax.tick_params(axis='both', which='major', labelsize=8)
     # Increase the space between tick labels and the axes
-    ax.tick_params(axis='x', which='major', pad=15)
-    ax.tick_params(axis='y', which='major', pad=15)
-    ax.tick_params(axis='z', which='major', pad=15)
-
-    
+    ax.tick_params(axis='x', which='major', pad=1)
+    ax.tick_params(axis='y', which='major', pad=1)
+    ax.tick_params(axis='z', which='major', pad=1)
 
     if view == 'small':
-        ax.set_box_aspect([2.5, 4, 2])
+        ax.set_box_aspect([6, 4, 3])
     else:
         ax.set_box_aspect([3, 4, 2])
 
     # Adjusting the view and plot appearance
+    # Adjusting the view and plot appearance
     if view == 'small':
         ax.view_init(elev=20, azim=-120)
     else:
-        ax.view_init(elev=20, azim=-179)
+        ax.view_init(elev=10, azim=-179)
     plt.tight_layout()
 
-    ax.set_xlim(0.2, 3.5)
-    ax.set_ylim(35, 190)
+    ax.set_ylim(0.2, 3.5)
+    ax.set_xlim(35, 190)
     ax.set_zlim(30,500)
 
     # Background color
@@ -564,9 +586,9 @@ def plot_3d_peaks(peaks_features_df, samples,result_dir, label = 'biotic', view 
 
     # Add legend at the bottom of the plot
     if label == 'biotic':
-        ax.legend(handletextpad=1, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=1, frameon=False, ncols=2)
+        ax.legend(handletextpad=1, fontsize='8', title_fontsize='8', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=1, frameon=False, ncols=5)
     else:
-        ax.legend(handletextpad=1, fontsize='12', title_fontsize='14', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=1, frameon=False, ncols=2)
+        ax.legend(handletextpad=1, fontsize='8', title_fontsize='8', handlelength=1, loc='upper right', borderpad=1.2, labelspacing=1, frameon=False, ncols=4)
 
     # Adjust layout to make room for the legend
     # Adjust layout to make room for the legend
@@ -591,14 +613,14 @@ def plot_distribution_of_peaks(peaks_features_df, result_dir, x_axis = 'm/z'):
         bin_edges = [1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75]
 
     # Create a figure and axis with specified size
-    fig, ax = plt.subplots(figsize=(4, 3))
+    fig, ax = plt.subplots(figsize=(2.2, 1.3))
 
     # Remove the top and right borders
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
     # Create the histogram plot
-    sns.histplot(data=peaks_features_df, x=x_axis, hue="class", palette=palette, alpha=0.85, bins=bin_edges)
+    sns.histplot(data=peaks_features_df, x=x_axis, hue="class", palette=palette, alpha=0.85, bins=bin_edges, linewidth=0.5)
 
     # Customizing x-axis tick labels to show fewer labels
     tick_labels = [f'{bin_edges[i]}-{bin_edges[i+1]}' for i in range(len(bin_edges)-1)]
@@ -606,20 +628,26 @@ def plot_distribution_of_peaks(peaks_features_df, result_dir, x_axis = 'm/z'):
 
     # Show only every 2nd label
     reduced_tick_labels = [tick_labels[i] if i % 2 == 0 else '' for i in range(len(tick_labels))]
-    ax.set_xticklabels(reduced_tick_labels, rotation=90, fontsize=12)
+    ax.set_xticklabels(reduced_tick_labels, rotation=90, fontsize=8)
+
+    ax.tick_params(axis='both', which='major', color='black', length=3, width=0.5, labelsize=8)
+
+    ax.spines['left'].set_linewidth(0.5)
+    ax.spines['bottom'].set_linewidth(0.5)
+
 
     # Limit the x-axis and y-axis range
     if x_axis == 'm/z':
         ax.set_xlim(0, 700)
-        ax.set_xlabel('m/z', fontsize=12)
+        ax.set_xlabel('', fontsize=8)
     elif x_axis == 'RT1':
         ax.set_xlim(40, 180)
-        ax.set_xlabel('1st Time (min)', fontsize=12)
+        ax.set_xlabel('', fontsize=8)
     else:
         ax.set_xlim(1, 2.75)
-        ax.set_xlabel('2nd Time (s)', fontsize=12)
-    
-    ax.set_ylabel('Frequency', fontsize=12)
+        ax.set_xlabel('', fontsize=8)
+
+    ax.set_ylabel('', fontsize=8)
     ax.set_ylim(0, None)
 
     # Set the background color

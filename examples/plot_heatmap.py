@@ -17,13 +17,13 @@ config = {
     "all_samples": True,
     
     # Name of the sample to be analyzed if all_samples is False
-    "sample_name": "231003_04_Icerland_Soil_300uLDCM_100oC24h.csv",
-    # "sample_name": "231003_04_Icerland_Soil_300uLDCM_100oC24h.csv",
+    "sample_name": "230823_07_Green_River_Shale_Soil_500uLDCM_100oC24h.csv",
+    # "sample_name": "230823_04_Murchison_Soil_300uLDCM_100oC24h-001.csv",
 
     "csv_file_name_column": "csv_file_name",
     
     # What m/z value to plot
-    "m_z": "253"
+    "m_z": "102"
 }
 
 chromalyzer.plot_heatmap.plot_heatmap(config)

@@ -2,7 +2,7 @@ import chromalyzer
 
 config = {
     "parallel_processing": True,
-    "number_of_splits": 20,
+    "number_of_splits": 100,
 
     "mz_list_path": "data/all_mz_values.csv",
     "labels_path": "data/labels.csv",
@@ -18,8 +18,8 @@ config = {
     "peaks_dir_path": "/usr/scratch/chromalyzer/peaks/",
     "lambda1": [0.4],
     "lambda2": [2.0],
-    "rt1_threshold": [10], # 10 * 3.504 = 35.04
-    "rt2_threshold": range(5,125,5), # 5*0.008 = 0.04 - 125*0.008 = 1
+    "rt1_threshold": [35.04], # 10 * 3.504 = 35.04
+    "rt2_threshold": [round(i * 0.008,3) for i in range(1,150)], # 5*0.008 = 0.04 - 150*0.008 = 1.2
 }
 
 chromalyzer.retention_times_alignment.retention_times_alignment(config)

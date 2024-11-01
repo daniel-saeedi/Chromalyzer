@@ -3,6 +3,8 @@ import os
 from loguru import logger
 import pandas as pd
 import numpy as np
+
+from chromalyzer.src.utils.misc import find_center
 from .utils.heatmap_utils import create_folder_if_not_exists
 from .utils.rt_alignment_utils import find_cluster_features, which_cluster
 import concurrent.futures
@@ -10,7 +12,7 @@ import concurrent.futures
 class RetentionTimesAlignment:
     def __init__(self, samples_name_list : pd.DataFrame,
                   mz_list : list, peaks_dir_path : str, features_out_path: str,  output_dir_TII_aligned : str,
-                  rt1_threshold : int, rt2_threshold : int) -> None:
+                  rt1_threshold : float, rt2_threshold : float, rt1_timestep: float, rt2_timestep: float) -> None:
         self.samples_name_list = samples_name_list
         self.mz_list = mz_list
         self.peaks_dir_path = peaks_dir_path
@@ -18,6 +20,9 @@ class RetentionTimesAlignment:
         self.rt1_threshold = rt1_threshold
         self.rt2_threshold = rt2_threshold
         self.output_dir_TII_aligned = output_dir_TII_aligned
+
+        self.rt1_timestep = rt1_timestep
+        self.rt2_timestep = rt2_timestep
 
         create_folder_if_not_exists(self.features_out_path)
     
@@ -46,64 +51,69 @@ class RetentionTimesAlignment:
 
         all_features_info.reset_index(drop=True, inplace=True)
         return all_features, all_features_info
-
+    
+    def is_contained(self, peak, cluster):
+        return (cluster['min_RT1_center'] <= peak['RT1_center'] <= cluster['max_RT1_center']) and (cluster['min_RT2_center'] <= peak['RT2_center'] <= cluster['max_RT2_center'])
     # Returns cluster maps and clusters information(e.g. their starting and end point) for a specific M/Z
     def generate_features(self, m_z, samples_name):
         # Load peaks data from the specified file
         peaks_file_path = os.path.join(self.peaks_dir_path, f'{m_z}.csv')
         peaks = pd.read_csv(peaks_file_path)
 
-        # Check if peaks data is not empty
-        if not peaks.empty:
-            # Define the range of retention times
-            first_time_axis = np.load(os.path.join(self.output_dir_TII_aligned, f'first_time.npy'))
-            second_time_axis = np.load(os.path.join(self.output_dir_TII_aligned, f'second_time.npy'))
+        peaks = peaks.sort_values(by=['RT1_center', 'RT2_center']).reset_index(drop=True)
 
-            # Initialize an empty heatmap DataFrame
-            empty_heatmap = pd.DataFrame(0, index=second_time_axis, columns=first_time_axis)
+        # Step 2: Create a custom group based on the difference conditions
+        peaks['group'] = (peaks['RT1_center'].diff().abs() > self.rt1_threshold) | (peaks['RT2_center'].diff().abs() > self.rt2_threshold)
+        peaks['group'] = peaks['group'].cumsum()
 
-            # Fill the heatmap with peak data
-            for _, row in peaks.iterrows():
-                empty_heatmap.at[row['RT2_center'], row['RT1_center']] = 1
+        # Step 3: Group by the 'group' column and aggregate
+        rectangular_clusters = peaks.groupby('group').agg(
+            min_RT1_center=('RT1_center', 'min'),
+            max_RT1_center=('RT1_center', 'max'),
+            min_RT2_center=('RT2_center', 'min'),
+            max_RT2_center=('RT2_center', 'max')
+        ).reset_index(drop=True)
 
-            # Find features using clustering
-            cluster_centers, cluster_rectangles = find_cluster_features(empty_heatmap, self.rt1_threshold,self.rt2_threshold)
-
-            # Initialize the cluster map
-            cluster_map = np.zeros((len(samples_name), len(cluster_rectangles)))
+        if not rectangular_clusters.empty:
+            cluster_map = np.zeros((len(samples_name), len(rectangular_clusters))) # Initialize the cluster map
 
             # Populate the cluster map for each sample
             for sample_id, sample in enumerate(samples_name):
                 sample_peaks_df = peaks[peaks['csv_file_name'] == sample]
                 for _, peak in sample_peaks_df.iterrows():
-                    clusters = which_cluster(second_time_axis, first_time_axis, peak, cluster_rectangles)
-                    for cluster in clusters:
-                        cluster_map[sample_id, cluster] = 1
-
+                    for cluster_id, cluster in rectangular_clusters.iterrows():
+                        if self.is_contained(peak, cluster):
+                            cluster_map[sample_id, cluster_id] = 1
+            
             # Collect clusters information
             clusters_info = [
                 (
                     m_z,
-                    first_time_axis[cluster_rectangle[1]], second_time_axis[cluster_rectangle[0]],  # RT1_start, RT2_start
-                    first_time_axis[cluster_rectangle[3]], second_time_axis[cluster_rectangle[2]],  # RT1_end, RT2_end
-                    first_time_axis[cluster_centers[idx][1]], second_time_axis[cluster_centers[idx][0]]  # RT1_center, RT2_center
+                    clusters['min_RT1_center'], clusters['min_RT2_center'],  # RT1_start, RT2_start
+                    clusters['max_RT1_center'], clusters['max_RT2_center'],  # RT1_end, RT2_end
+                    find_center((clusters['min_RT1_center'], clusters['min_RT2_center'], 
+                                 clusters['max_RT1_center'], clusters['max_RT2_center']), rt1_timestep=self.rt1_timestep, rt2_timestep=self.rt2_timestep)[0],  # RT1_center
+                    find_center((clusters['min_RT1_center'], clusters['min_RT2_center'], 
+                                 clusters['max_RT1_center'], clusters['max_RT2_center']), rt1_timestep=self.rt1_timestep, rt2_timestep=self.rt2_timestep)[1],  # RT2_center
                 )
-                for idx, cluster_rectangle in enumerate(cluster_rectangles)
+                for idx, clusters in rectangular_clusters.iterrows()
             ]
 
-            return cluster_map, clusters_info
 
+            
+
+            return cluster_map, clusters_info
         else:
             return [], []
 
-def retention_times_alignment_process(params,peaks_dir_path,samples_name_list,mz_list,features_out_path, output_dir_TII_aligned):
+def retention_times_alignment_process(params,peaks_dir_path,samples_name_list,mz_list,features_out_path, output_dir_TII_aligned, rt1_timestep, rt2_timestep):
     for param in params:
         lam1 = param[0]
         lam2 = param[1]
-        rt1_threshold,rt2_threshold = int(param[2]),int(param[3])
+        rt1_threshold,rt2_threshold = param[2],param[3]
 
         peaks_path = os.path.join(peaks_dir_path, f'peaks_lambda1_{lam1}/', f'lam2_{lam2}/')
-        rta = RetentionTimesAlignment(samples_name_list, mz_list, peaks_path, features_out_path, output_dir_TII_aligned, rt1_threshold, rt2_threshold)
+        rta = RetentionTimesAlignment(samples_name_list, mz_list, peaks_path, features_out_path, output_dir_TII_aligned, rt1_threshold, rt2_threshold, rt1_timestep, rt2_timestep)
         features, feature_info_df = rta.align_retention_times()
 
         np.save(os.path.join(features_out_path, f'features_lam1_{lam1}_lam2_{lam2}_rt1th_{rt1_threshold}_rt2th_{rt2_threshold}.npy'), features)
@@ -135,13 +145,19 @@ def retention_times_alignment(config):
 
     create_folder_if_not_exists(os.path.join(config['features_path'],'peaks_per_parameter/'))
 
+    rt1_axis = np.load(os.path.join(config['output_dir_TII_aligned'], 'first_time.npy'))
+    rt2_axis = np.load(os.path.join(config['output_dir_TII_aligned'], 'second_time.npy'))
+    rt1_timestep = round(rt1_axis[1] - rt1_axis[0],3)
+    rt2_timestep = round(rt2_axis[0] - rt2_axis[1],3)
+
     if config['parallel_processing']:
         with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
             executor.map(retention_times_alignment_process, splits, itertools.repeat(config['peaks_dir_path']), 
-                         itertools.repeat(samples_name), itertools.repeat(mz_list), 
-                         itertools.repeat(config['features_path']),
-                         itertools.repeat(config['output_dir_TII_aligned']))
+                itertools.repeat(samples_name), itertools.repeat(mz_list), 
+                itertools.repeat(config['features_path']),
+                itertools.repeat(config['output_dir_TII_aligned']),
+                itertools.repeat(rt1_timestep), itertools.repeat(rt2_timestep))
     else:
-        retention_times_alignment_process(params_combination, config['peaks_dir_path'], samples_name, mz_list, config['features_path'], config['output_dir_TII_aligned'])
+        retention_times_alignment_process(params_combination, config['peaks_dir_path'], samples_name, mz_list, config['features_path'], config['output_dir_TII_aligned'], rt1_timestep, rt2_timestep)
     
     logger.info('Retention times alignment process is completed.')

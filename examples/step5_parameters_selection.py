@@ -19,8 +19,8 @@ config = {
     "seed": 42,
     "lambda1": [0.4],
     "lambda2": [2.0],
-    "rt1_threshold": [10],
-    "rt2_threshold": range(5,125,5),
+    "rt1_threshold": [35.04], # 10 * 3.504 = 35.04
+    "rt2_threshold": [round(i * 0.008,3) for i in range(1,150)], # 5*0.008 = 0.04 - 150*0.008 = 1.2
 }
 
 chromalyzer.parameters_selection.parameters_selection(config)
